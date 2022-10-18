@@ -11,10 +11,8 @@ import (
 // use a recorder with default configuration.
 //
 // Add a namespace of application name, uses as prefix for metrics.
-func HTTPMetrics(namespace string, rec *HTTPRecorder) echo.MiddlewareFunc {
-	if rec == nil {
-		rec = NewHTTPRecorder(HTTPCfg, nil)
-	}
+func HTTPMetrics(namespace string) echo.MiddlewareFunc {
+	rec := NewHTTPRecorder(HTTPCfg.SetNamespace(namespace), nil)
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) (err error) {

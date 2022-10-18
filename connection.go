@@ -8,22 +8,17 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-// Collector hold metric and trace informations.
-type Collector struct {
-	Conn *grpc.ClientConn
-}
-
 // ConnectGRPC to use connection otel grpc endpoint, usually using to connect otel collector.
-func (c *Collector) ConnectGRPC(ctx context.Context, url string) (*Collector, error) {
+func (c *Collector) ConnectGRPC(ctx context.Context, url string) error {
 	conn, err := grpc.DialContext(ctx, url,
 		grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
 	if err != nil {
-		return c, fmt.Errorf("failed to create gRPC connection to collector: %w", err)
+		return fmt.Errorf("failed to create gRPC connection to collector: %w", err)
 	}
 
 	c.Conn = conn
 
-	return c, nil
+	return nil
 }
 
 // CloseGRPC to closing opened grpc connection.

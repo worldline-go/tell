@@ -1,10 +1,19 @@
 package exporter
 
-import "go.opentelemetry.io/otel/exporters/prometheus"
+import (
+	"log"
 
-// MetricPrometheus return a reader wuth prometheus.
-func MetricPrometheus() prometheus.Exporter {
-	exporter := prometheus.New()
+	"go.opentelemetry.io/otel/exporters/prometheus"
+)
+
+type Prometheus struct{}
+
+// MetricPrometheus return a reader as prometheus exporter.
+func (m Prometheus) Metric() *prometheus.Exporter {
+	exporter, err := prometheus.New()
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	return exporter
 }

@@ -4,14 +4,13 @@ go 1.18
 
 require (
 	github.com/labstack/echo/v4 v4.9.1
-	go.opentelemetry.io/otel v1.11.0
-	go.opentelemetry.io/otel/exporters/jaeger v1.11.0
-	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v0.32.3
-	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.11.0
-	go.opentelemetry.io/otel/exporters/prometheus v0.32.3
-	go.opentelemetry.io/otel/metric v0.32.3
-	go.opentelemetry.io/otel/sdk v1.11.0
-	go.opentelemetry.io/otel/sdk/metric v0.32.3
+	go.opentelemetry.io/otel v1.11.1-0.20221017162556-1cbd4c2b7726
+	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v0.32.4-0.20221017162556-1cbd4c2b7726
+	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.11.1-0.20221017162556-1cbd4c2b7726
+	go.opentelemetry.io/otel/exporters/prometheus v0.32.4-0.20221017162556-1cbd4c2b7726
+	go.opentelemetry.io/otel/metric v0.32.4-0.20221017162556-1cbd4c2b7726
+	go.opentelemetry.io/otel/sdk v1.11.1-0.20221017162556-1cbd4c2b7726
+	go.opentelemetry.io/otel/sdk/metric v0.32.4-0.20221017162556-1cbd4c2b7726
 	google.golang.org/grpc v1.50.1
 )
 
@@ -24,7 +23,7 @@ require (
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.7.0 // indirect
 	github.com/labstack/gommon v0.4.0 // indirect
-	github.com/mattn/go-colorable v0.1.11 // indirect
+	github.com/mattn/go-colorable v0.1.12 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.1 // indirect
 	github.com/prometheus/client_golang v1.13.0 // indirect

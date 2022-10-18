@@ -37,6 +37,12 @@ var HTTPCfg = HTTPRecorderConfig{
 	EnableInFlightMetric: true,
 }
 
+func (c HTTPRecorderConfig) SetNamespace(v string) HTTPRecorderConfig {
+	c.Namespace = v
+
+	return c
+}
+
 // HTTPLabels will contain HTTP label values for each added metric. Not all labels apply to all metrics, read the
 // documentation in each metric method to find out which labels are available for that metric.
 type HTTPLabels struct {
