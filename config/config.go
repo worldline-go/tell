@@ -26,6 +26,8 @@ type Config struct {
 	MetricsSettings MetricsSettings `cfg:"metrics_settings"`
 	// Collector to show URL of grpc otel collector.
 	Collector string `env:"OTEL_EXPORTER_OTLP_ENDPOINT" default:"otel-collector:4317"`
+	// Disable for metric and trace. It is add a noop metric/trace and your code works without change.
+	Disable bool
 }
 
 func (c *Config) GetEnabledViews() types.Tells {
@@ -41,7 +43,7 @@ func (c *Config) GetEnabledTraces() types.Tells {
 }
 
 func (c *Config) IsGRPC() bool {
-	return VGrpcNeed.IsExistOne(c.GetEnabledMetrics())
+	return VGrpcNeed.IsExistOne(c.GetEnabledMetrics()) || VGrpcNeed.IsExistOne(c.GetEnabledTraces())
 }
 
 type Selectors struct {

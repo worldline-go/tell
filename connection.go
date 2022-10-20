@@ -9,9 +9,11 @@ import (
 )
 
 // ConnectGRPC to use connection otel grpc endpoint, usually using to connect otel collector.
+//
+// grpc.WithBlock() disabled and it can connect later when collector exist.
 func (c *Collector) ConnectGRPC(ctx context.Context, url string) error {
 	conn, err := grpc.DialContext(ctx, url,
-		grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
+		grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return fmt.Errorf("failed to create gRPC connection to collector: %w", err)
 	}

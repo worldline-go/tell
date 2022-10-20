@@ -58,11 +58,13 @@ func (c *Collector) TraceProvider(ctx context.Context) error {
 		return fmt.Errorf("failed resource new; %w", err)
 	}
 
-	c.TracerProvider = tracesdk.NewTracerProvider(
+	c.TracerProviderSDK = tracesdk.NewTracerProvider(
 		tracesdk.WithSampler(tracesdk.AlwaysSample()),
 		tracesdk.WithResource(res),
 		tracesdk.WithSpanProcessor(bsp),
 	)
+
+	c.TracerProvider = c.TracerProviderSDK
 
 	return nil
 }

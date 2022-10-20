@@ -27,6 +27,7 @@ func (c *Collector) MetricProvider(views []view.View, mReaders ...metricsdk.Read
 		options...,
 	)
 
+	c.MeterProviderSDK = meterProvider
 	c.MeterProvider = meterProvider
 
 	return c

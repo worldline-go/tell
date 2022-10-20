@@ -8,9 +8,11 @@ import (
 
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/prometheus"
+	"go.opentelemetry.io/otel/metric"
 	metricsdk "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/metric/view"
 	tracesdk "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 
 	"gitlab.test.igdcs.com/finops/nextgen/utils/metrics/tell/config"
@@ -28,11 +30,13 @@ type Collector struct {
 	// Attributes have common attributes.
 	Attributes map[string]interface{}
 	// metrics
-	MeterProvider *metricsdk.MeterProvider
-	MetricReaders MetricReaders
-	MetricViews   []view.View
+	MeterProvider    metric.MeterProvider
+	MeterProviderSDK *metricsdk.MeterProvider
+	MetricReaders    MetricReaders
+	MetricViews      []view.View
 	// traces
-	TracerProvider *tracesdk.TracerProvider
+	TracerProvider    trace.TracerProvider
+	TracerProviderSDK *tracesdk.TracerProvider
 	// ShutdownTimeOut for closing providers, default 2 seconds.
 	ShutdownTimeOut time.Duration
 }
@@ -54,13 +58,8 @@ func New(ctx context.Context, cfg Config, views ...view.View) (*Collector, error
 		}
 	}
 
-	// set views
-	// for _, v := range cfg.GetEnabledViews() {
-
-	// }
-
 	metricsEnabled := cfg.GetEnabledMetrics()
-	if len(metricsEnabled) > 0 {
+	if len(metricsEnabled) > 0 && cfg.Disable == false {
 		// add meter provider for generate general metric provider
 		var readers []metricsdk.Reader
 		// set metrics
@@ -84,10 +83,13 @@ func New(ctx context.Context, cfg Config, views ...view.View) (*Collector, error
 		}
 
 		c.MetricProvider(views, readers...).SetMetricProviderGlobal()
+	} else {
+		c.MeterProvider = metric.NewNoopMeterProvider()
+		c.SetMetricProviderGlobal()
 	}
 
 	tracesEnabled := cfg.GetEnabledTraces()
-	if len(tracesEnabled) > 0 {
+	if len(tracesEnabled) > 0 && cfg.Disable == false {
 		// set metrics
 		for _, v := range tracesEnabled {
 			switch v {
@@ -98,6 +100,9 @@ func New(ctx context.Context, cfg Config, views ...view.View) (*Collector, error
 			}
 		}
 
+		c.SetTraceProviderGlobal()
+	} else {
+		c.TracerProvider = trace.NewNoopTracerProvider()
 		c.SetTraceProviderGlobal()
 	}
 
@@ -125,20 +130,26 @@ func (c *Collector) Shutdown() (err error) {
 	}
 
 	defer func() {
-		if errClose := c.Conn.Close(); errClose != nil {
-			err = fmt.Errorf("failed to close connection; %v; %w", errClose, err)
+		if c.Conn != nil {
+			if errClose := c.Conn.Close(); errClose != nil {
+				err = fmt.Errorf("failed to close connection; %v; %w", errClose, err)
+			}
 		}
 	}()
 
 	ctx, cancelCtx := context.WithTimeout(context.Background(), c.ShutdownTimeOut)
 	defer cancelCtx()
 
-	if errShutdown := c.MeterProvider.Shutdown(ctx); errShutdown != nil {
-		err = fmt.Errorf("failed to shutdown meter provider; %w; %v", errShutdown, err)
+	if c.MeterProviderSDK != nil {
+		if errShutdown := c.MeterProviderSDK.Shutdown(ctx); errShutdown != nil {
+			err = fmt.Errorf("failed to shutdown meter provider; %w; %v", errShutdown, err)
+		}
 	}
 
-	if errShutdown := c.TracerProvider.Shutdown(ctx); errShutdown != nil {
-		err = fmt.Errorf("failed to shutdown trace provider; %w; %v", errShutdown, err)
+	if c.TracerProviderSDK != nil {
+		if errShutdown := c.TracerProviderSDK.Shutdown(ctx); errShutdown != nil {
+			err = fmt.Errorf("failed to shutdown trace provider; %w; %v", errShutdown, err)
+		}
 	}
 
 	return
