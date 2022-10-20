@@ -7,12 +7,14 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-// HTTPMetrics is an echo middleware to add metrics to rec for each HTTP request. If rec is nil, the middleware wil
-// use a recorder with default configuration.
-//
-// Add a namespace of application name, uses as prefix for metrics.
-func HTTPMetrics(namespace string) echo.MiddlewareFunc {
-	rec := NewHTTPRecorder(HTTPCfg.SetNamespace(namespace), nil)
+// HTTPMetrics is an echo middleware to add metrics to rec for each HTTP request.
+// If recorder config is nil, the middleware will use a recorder with default configuration.
+func HTTPMetrics(cfg *HTTPRecorderConfig) echo.MiddlewareFunc {
+	if cfg == nil {
+		cfg = &HTTPCfg
+	}
+
+	rec := NewHTTPRecorder(*cfg, nil)
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) (err error) {

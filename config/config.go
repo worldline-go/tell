@@ -47,7 +47,7 @@ func (c *Config) IsGRPC() bool {
 type Selectors struct {
 	Enable     []string
 	Disable    []string
-	EnableAll  bool `cfg:"enable_all"`
+	EnableAll  bool `cfg:"enable_all" default:"true"`
 	DisableAll bool `cfg:"disable_all"`
 }
 

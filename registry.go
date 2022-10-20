@@ -15,7 +15,6 @@ import (
 
 	"gitlab.test.igdcs.com/finops/nextgen/utils/metrics/tell/config"
 	"gitlab.test.igdcs.com/finops/nextgen/utils/metrics/tell/metric/exporter"
-	"gitlab.test.igdcs.com/finops/nextgen/utils/metrics/tell/metric/instrumentation/metricecho"
 	"gitlab.test.igdcs.com/finops/nextgen/utils/metrics/tell/types"
 )
 
@@ -44,7 +43,7 @@ type MetricReaders struct {
 }
 
 // New generate collectors based on configuration.
-func New(ctx context.Context, cfg Config) (*Collector, error) {
+func New(ctx context.Context, cfg Config, views ...view.View) (*Collector, error) {
 	c := new(Collector)
 	c.Attributes = cfg.Attributes
 
@@ -55,21 +54,10 @@ func New(ctx context.Context, cfg Config) (*Collector, error) {
 		}
 	}
 
-	// if enabled additional views add here
-	var views []view.View
-
 	// set views
-	for _, v := range cfg.GetEnabledViews() {
-		switch v {
-		case types.ViewRequestDuration:
-			metricEchoViews, err := metricecho.GetViews()
-			if err != nil {
-				return nil, fmt.Errorf("failed to get metricecho views; %w", err)
-			}
+	// for _, v := range cfg.GetEnabledViews() {
 
-			views = append(views, metricEchoViews...)
-		}
-	}
+	// }
 
 	metricsEnabled := cfg.GetEnabledMetrics()
 	if len(metricsEnabled) > 0 {

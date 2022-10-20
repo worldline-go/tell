@@ -8,7 +8,7 @@ import (
 )
 
 func GetViews() ([]view.View, error) {
-	customBucketsView, err := view.New(
+	customBucketView, err := view.New(
 		view.MatchInstrumentName("*request_duration_seconds"),
 		view.WithSetAggregation(aggregation.ExplicitBucketHistogram{
 			Boundaries: []float64{.005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10},
@@ -18,5 +18,5 @@ func GetViews() ([]view.View, error) {
 		return nil, fmt.Errorf("meter custom view cannot set; %w", err)
 	}
 
-	return []view.View{customBucketsView}, nil
+	return []view.View{customBucketView}, nil
 }

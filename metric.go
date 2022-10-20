@@ -15,7 +15,9 @@ func (c *Collector) MetricProvider(views []view.View, mReaders ...metricsdk.Read
 	// Set resource for auto show some attributes about this service
 	// Set OTEL_SERVICE_NAME or OTEL_RESOURCE_ATTRIBUTES
 
-	options := []metricsdk.Option{metricsdk.WithResource(resource.Environment())}
+	options := []metricsdk.Option{
+		metricsdk.WithResource(resource.Environment()),
+	}
 
 	for _, mReader := range mReaders {
 		options = append(options, metricsdk.WithReader(mReader, views...))

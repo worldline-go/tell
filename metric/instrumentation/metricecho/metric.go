@@ -88,7 +88,11 @@ func NewHTTPRecorder(cfg HTTPRecorderConfig, meterProvider metric.MeterProvider)
 }
 
 func (h *HTTPRecorder) namespacedValue(v string) string {
-	return h.cfg.Namespace + "_" + v
+	if h.cfg.Namespace != "" {
+		return h.cfg.Namespace + "_" + v
+	}
+
+	return v
 }
 
 func (h *HTTPRecorder) register() error {
