@@ -8,7 +8,7 @@ const (
 	Unknown Tell = iota
 	MetricOtel
 	MetricPrometheus
-	ViewRequestDuration
+	// ViewRequestDuration
 	TraceOtel
 )
 
@@ -18,8 +18,8 @@ func (t Tell) String() string {
 		return "metric_otel"
 	case MetricPrometheus:
 		return "metric_prometheus"
-	case ViewRequestDuration:
-		return "view_request_duration"
+	// case ViewRequestDuration:
+	// 	return "view_request_duration"
 	case TraceOtel:
 		return "trace_otel"
 	}
@@ -69,8 +69,8 @@ func StringToTell(v string) Tell {
 		return MetricOtel
 	case "metric_prometheus":
 		return MetricPrometheus
-	case "view_request_duration":
-		return ViewRequestDuration
+	// case "view_request_duration":
+	// 	return ViewRequestDuration
 	case "trace_otel":
 		return TraceOtel
 	}

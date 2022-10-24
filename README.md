@@ -6,7 +6,18 @@ This library include metric and trace helper functions to work directly in finop
 go get gitlab.test.igdcs.com/finops/nextgen/utils/metrics/tell
 ```
 
-## Environment Values
+To close some metrics and trace
+
+```sh
+# disable all metrics and trace providers and create noop provider to continue to work same as code perspective.
+# default is false
+TELEMETRY_DISABLE=true
+# inteval duration so send new metrics to otel collector (using time.Parseduration)
+# default 2s
+TELEMETRY_METRICS_SETTINGS_OTEL_INTERVAL=2s
+```
+
+## Otel Environment Values
 
 Metric and trace checking some special environment values for collector. We should fallow to opentelemetry schemas.
 
@@ -60,53 +71,53 @@ Hold this meters in a struct to reach easily.
 __Counter:__
 
 ```go
-metrics.successCounter, err = h.Meter.Meter("").
+successCounter, err = collector.MeterProvider.Meter("").
     SyncInt64().Counter("request_success", instrument.WithDescription("number of success count"))
 if err != nil {
     log.Panic().Msgf("failed to initialize successCounter; %w", err)
 }
 
 // use counter, add attributes here to give much meaning to your counter.
-metrics.successCounter.Add(c.Request().Context(), 1, attribute.Key("special").String("X"))
+successCounter.Add(c.Request().Context(), 1, attribute.Key("special").String("X"))
 ```
 
 __Up/Down Counter:__ this is same as counter but it can also decrese.
 
 ```go
-metrics.successCounter, err = h.Meter.Meter("").
+counterUpDown, err = collector.MeterProvider.Meter("").
     SyncInt64().UpDownCounter("request_success", instrument.WithDescription("number of success count"))
 if err != nil {
     log.Panic().Msgf("failed to initialize successCounter; %w", err)
 }
 
 // use counter, add attributes here to give much meaning to your counter.
-metrics.counterUpDown.Add(c.Request().Context(), 1, attribute.Key("special").String("X"))
+counterUpDown.Add(c.Request().Context(), 1, attribute.Key("special").String("X"))
 ```
 
 __Histogram:__
 
 ```go
-metrics.valuehistogram, err = h.Meter.Meter("").
+valuehistogram, err = collector.MeterProvider.Meter("").
     SyncFloat64().Histogram("request_histogram", instrument.WithDescription("value histogram"))
 if err != nil {
     log.Panic().Msgf("failed to initialize valuehistogram; %w", err)
 }
 
 // use histogram, add attributes here to give much meaning to your counter
-metrics.valuehistogram.Record(c.Request().Context(), float64(countInt), attribute.Key("special").String("X"))
+valuehistogram.Record(c.Request().Context(), float64(countInt), attribute.Key("special").String("X"))
 ```
 
 __Gauge:__ this is special and it need to be run with async and we need to register to callback. It is like background operation.
 
 ```go
-metrics.sendGauge, err = h.Meter.Meter("").AsyncInt64().Gauge("send", instrument.WithDescription("async gauge"))
+sendGauge, err = collector.MeterProvider.Meter("").AsyncInt64().Gauge("send", instrument.WithDescription("async gauge"))
 if err != nil {
     log.Panic().Msgf("failed to initialize sendGauge; %w", err)
 }
 
 // check value will be checked in this callback
-h.Meter.Meter("").RegisterCallback([]instrument.Asynchronous{h.metrics.sendGauge}, func(ctx context.Context) {
-    h.metrics.sendGauge.Observe(ctx, checkValue, attribute.Key("special").String("X"))
+collector.MeterProvider.Meter("").RegisterCallback([]instrument.Asynchronous{sendGauge}, func(ctx context.Context) {
+    sendGauge.Observe(ctx, checkValue, attribute.Key("special").String("X"))
 })
 ```
 
@@ -189,4 +200,50 @@ collector, err := tell.New(ctx, cfg.Telemetry)
 
 Use to trace provider to create some trace data.
 
-We will add provider data sampler in future for our finops!
+We will add data sampler in future for our finops! Currently manually handle yourself.
+
+### Custom Trace
+
+Start a trace with using previous context. After the start it will create new context and use that context for next trace.  
+If you not use context or not give previous one tracer, it will start as root and not good for view.
+
+```go
+ctxTrace, span := collector.TracerProvider.Tracer(c.Path()).Start(c.Request().Context(), "PostCount")
+defer span.End()
+
+// add extra values to your trace data
+// our collector adds extra fields automatically as servicename, containerid
+span.SetAttributes(attribute.Key("request.count.set").Int64(countInt))
+```
+
+## Development
+
+To test in local machine deploy otel-collector, grafana, prometheus and jaeger:
+
+_Do it in a some development folder_
+
+```sh
+curl -fksSL https://gitlab.test.igdcs.com/finops/nextgen/utils/metrics/tell/-/archive/main/tell-main.tar.gz?path=compose | tar --overwrite -zx
+
+docker-compose -p tell --file tell-main-compose/compose/compose.yml up -d
+```
+
+| Project       | Port  |
+|---------------|-------|
+| grafana       | 3000  |
+| jaeger        | 16686 |
+| otel-grpc     | 4317  |
+| otel-metric   | 8888  |
+| otel-exported | 8889  |
+
+Down the compose
+
+```sh
+docker-compose -p tell down --volumes
+```
+
+## Resources
+
+https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/examples/demo  
+https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/resource/semantic_conventions/README.md  
+https://docs.docker.com/engine/swarm/services/#create-services-using-templates

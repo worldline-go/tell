@@ -33,7 +33,6 @@ type Collector struct {
 	MeterProvider    metric.MeterProvider
 	MeterProviderSDK *metricsdk.MeterProvider
 	MetricReaders    MetricReaders
-	MetricViews      []view.View
 	// traces
 	TracerProvider    trace.TracerProvider
 	TracerProviderSDK *tracesdk.TracerProvider
@@ -58,8 +57,13 @@ func New(ctx context.Context, cfg Config, views ...view.View) (*Collector, error
 		}
 	}
 
+	// metricsViewEnabled := cfg.GetEnabledViews()
+	// if len(metricsViewEnabled) > 0 && !cfg.Disable {
+	// 	// set enabled metric views here and append to views
+	// }
+
 	metricsEnabled := cfg.GetEnabledMetrics()
-	if len(metricsEnabled) > 0 && cfg.Disable == false {
+	if len(metricsEnabled) > 0 && !cfg.Disable {
 		// add meter provider for generate general metric provider
 		var readers []metricsdk.Reader
 		// set metrics
@@ -89,7 +93,7 @@ func New(ctx context.Context, cfg Config, views ...view.View) (*Collector, error
 	}
 
 	tracesEnabled := cfg.GetEnabledTraces()
-	if len(tracesEnabled) > 0 && cfg.Disable == false {
+	if len(tracesEnabled) > 0 && !cfg.Disable {
 		// set metrics
 		for _, v := range tracesEnabled {
 			switch v {
@@ -112,7 +116,7 @@ func New(ctx context.Context, cfg Config, views ...view.View) (*Collector, error
 // Gets attributes key-value.
 func (c *Collector) GetAttributes() []attribute.KeyValue {
 	// add common attributes
-	var attributes []attribute.KeyValue
+	var attributes []attribute.KeyValue //nolint:prealloc // return nil on empty
 
 	for k, v := range c.Attributes {
 		attributes = append(attributes, attribute.String(strings.ToLower(k), fmt.Sprint(v)))

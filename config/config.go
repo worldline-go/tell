@@ -9,7 +9,7 @@ var (
 	// Problem on multi readers
 	// VMetricAll = types.Tells{types.MetricOtel, types.MetricPrometheus}
 	VMetricAll = types.Tells{types.MetricOtel}
-	VViewAll   = types.Tells{types.ViewRequestDuration}
+	VViewAll   = types.Tells{}
 	VGrpcNeed  = types.Tells{types.MetricOtel, types.TraceOtel}
 
 	VTraceAll = types.Tells{types.TraceOtel}
@@ -19,7 +19,7 @@ type Config struct {
 	// Attributes have common attributes.
 	Attributes map[string]interface{}
 
-	Traces Selectors `cfg:"metrics"`
+	Traces Selectors `cfg:"traces"`
 
 	Metrics         Selectors       `cfg:"metrics"`
 	MetricsViews    Selectors       `cfg:"metrics_views"`
