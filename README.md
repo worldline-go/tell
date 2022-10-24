@@ -62,6 +62,17 @@ defer collector.Shutdown()
 
 Now you initialized and connected to our collector. You can send some metrics and trace data.
 
+`tell.New` function also set the global values so next time when you need you can get from the `global` package.
+
+These global get using by third-party libraries.
+
+```go
+// to get tracer provider // go.opentelemetry.io/otel
+otel.GetTracerProvider()
+// to get meter provider // go.opentelemetry.io/otel/metric/global
+global.MeterProvider()
+```
+
 ## Metric
 
 To add some metric, use collector's MeterProvider to create a metric entry and add some values to that entry.
@@ -235,6 +246,12 @@ docker-compose -p tell --file tell-main-compose/compose/compose.yml up -d
 | otel-grpc     | 4317  |
 | otel-metric   | 8888  |
 | otel-exported | 8889  |
+
+Check the status of tell compose
+
+```sh
+docker-compose -p tell ps
+```
 
 Down the compose
 
