@@ -53,6 +53,10 @@ func New(ctx context.Context, cfg Config, views ...view.View) (*Collector, error
 		cfg.Collector = os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
 	}
 
+	if cfg.Collector != "" {
+		log.Info().Msgf("opentelemetry collector: %s", cfg.Collector)
+	}
+
 	c := new(Collector)
 	c.Attributes = cfg.Attributes
 

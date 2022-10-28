@@ -168,29 +168,31 @@ func AddGlobalAttr(v ...attribute.KeyValue) {
 	GlobalAttr = append(GlobalAttr, v...)
 }
 
+func AddGlobalAttr(v ...attribute.KeyValue) {
+	GlobalAttr = append(GlobalAttr, v...)
+}
+
 func SetGlobalMeter() error {
 	mp := global.MeterProvider()
 
 	m := &Meter{}
 
-	success, err := mp.Meter("").SyncInt64().Counter("validate_success", instrument.WithDescription("number of success validated count"))
+	var err error
+
+	m.Success, err = mp.Meter("").SyncInt64().Counter("validate_success", instrument.WithDescription("number of success validated count"))
 	if err != nil {
 		return fmt.Errorf("failed to initialize validate_success; %w", err)
 	}
 
-	m.Success = success
-
-	fail, err := mp.Meter("").SyncInt64().Counter("validate_fail", instrument.WithDescription("number of error count"))
+	m.Fail, err = mp.Meter("").SyncInt64().Counter("validate_fail", instrument.WithDescription("number of error count"))
 	if err != nil {
 		return fmt.Errorf("failed to initialize successCounter; %w", err)
 	}
 
-	m.Fail = fail
-
-    // continue to add metrics
+	//
+	// continue to add metrics
 
 	GlobalMeter = m
-
 	return nil
 }
 ```
@@ -250,6 +252,8 @@ collector, err := tell.New(ctx, cfg.Telemetry, customBucketView)
 
 ### Echo
 
+#### Metric
+
 ```sh
 go get gitlab.test.igdcs.com/finops/nextgen/utils/metrics/tell/metric/instrumentation/metricecho
 ```
@@ -272,6 +276,19 @@ After that just enable middleware of metricecho
 ```go
 // add echo metrics
 e.Use(metricecho.HTTPMetrics(nil))
+```
+
+#### Trace
+
+Trace is not ready for finops, we will add details later.
+
+```sh
+go get go.opentelemetry.io/contrib/instrumentation/github.com/labstack/echo/otelecho
+```
+
+```go
+// add otel tracing
+e.Use(otelecho.Middleware(config.LoadConfig.AppName, otelecho.WithTracerProvider(otel.GetTracerProvider())))
 ```
 
 ### Runtime
