@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/prometheus"
 	"go.opentelemetry.io/otel/metric"
@@ -51,10 +52,12 @@ func New(ctx context.Context, cfg Config, views ...view.View) (*Collector, error
 	c.Attributes = cfg.Attributes
 
 	// check grpc need
-	if cfg.IsGRPC() {
+	if cfg.Collector != "" && cfg.IsGRPC() {
 		if err := c.ConnectGRPC(ctx, cfg.Collector); err != nil {
 			return nil, err
 		}
+
+		log.Info().Msg("connected to grpc opentelemetry collector")
 	}
 
 	// metricsViewEnabled := cfg.GetEnabledViews()
@@ -63,13 +66,14 @@ func New(ctx context.Context, cfg Config, views ...view.View) (*Collector, error
 	// }
 
 	metricsEnabled := cfg.GetEnabledMetrics()
-	if len(metricsEnabled) > 0 && !cfg.Disable {
+	if cfg.Collector != "" && len(metricsEnabled) > 0 {
 		// add meter provider for generate general metric provider
 		var readers []metricsdk.Reader
 		// set metrics
 		for _, v := range metricsEnabled {
 			switch v {
 			case types.MetricOtel:
+
 				otelExp := exporter.Otel{Conn: c.Conn, OtelSetting: cfg.MetricsSettings.Otel}
 
 				otelReader, err := otelExp.Metric(ctx)
@@ -79,10 +83,14 @@ func New(ctx context.Context, cfg Config, views ...view.View) (*Collector, error
 
 				c.MetricReaders.Otel = otelReader
 				readers = append(readers, otelReader)
+
+				log.Info().Msg("started metric provider for otel")
 			case types.MetricPrometheus:
 				prometheusReader := exporter.Prometheus{}.Metric()
 				c.MetricReaders.Prometheus = prometheusReader
 				readers = append(readers, prometheusReader)
+
+				log.Info().Msg("started metric provider for prometheus")
 			}
 		}
 
@@ -90,10 +98,12 @@ func New(ctx context.Context, cfg Config, views ...view.View) (*Collector, error
 	} else {
 		c.MeterProvider = metric.NewNoopMeterProvider()
 		c.SetMetricProviderGlobal()
+
+		log.Info().Msg("started metric provider noop")
 	}
 
 	tracesEnabled := cfg.GetEnabledTraces()
-	if len(tracesEnabled) > 0 && !cfg.Disable {
+	if cfg.Collector != "" && len(tracesEnabled) > 0 {
 		// set metrics
 		for _, v := range tracesEnabled {
 			switch v {
@@ -101,6 +111,8 @@ func New(ctx context.Context, cfg Config, views ...view.View) (*Collector, error
 				if err := c.TraceProvider(ctx); err != nil {
 					return nil, err
 				}
+
+				log.Info().Msg("started trace provider for otel")
 			}
 		}
 
@@ -108,6 +120,8 @@ func New(ctx context.Context, cfg Config, views ...view.View) (*Collector, error
 	} else {
 		c.TracerProvider = trace.NewNoopTracerProvider()
 		c.SetTraceProviderGlobal()
+
+		log.Info().Msg("started trace provider noop")
 	}
 
 	return c, nil

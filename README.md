@@ -9,9 +9,9 @@ go get gitlab.test.igdcs.com/finops/nextgen/utils/metrics/tell
 To close some metrics and trace
 
 ```sh
-# disable all metrics and trace providers and create noop provider to continue to work same as code perspective.
-# default is false
-TELEMETRY_DISABLE=true
+# if empty, metrics and trace providers and create noop provider to continue to work same as code perspective.
+# default is empty
+OTEL_EXPORTER_OTLP_ENDPOINT=otel-collector:4317
 # inteval duration so send new metrics to otel collector (using time.Parseduration)
 # default 2s
 TELEMETRY_METRICS_SETTINGS_OTEL_INTERVAL=2s
@@ -20,6 +20,10 @@ TELEMETRY_METRICS_SETTINGS_OTEL_INTERVAL=2s
 ## Otel Environment Values
 
 Metric and trace checking some special environment values for collector. We should fallow to opentelemetry schemas.
+
+Our environment already give these informations not need to do anything.
+
+Local testing more than one service with metrics, you should also provide this informations to prevent mixing.
 
 ```sh
 # OTEL_SERVICE_NAME=transaction_api
