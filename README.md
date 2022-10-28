@@ -17,6 +17,8 @@ OTEL_EXPORTER_OTLP_ENDPOINT=otel-collector:4317
 TELEMETRY_METRICS_SETTINGS_OTEL_INTERVAL=2s
 ```
 
+> `TELEMETRY_` prefix comes with igconfig!
+
 ## Otel Environment Values
 
 Metric and trace checking some special environment values for collector. We should fallow to opentelemetry schemas.
@@ -134,6 +136,91 @@ if err != nil {
 collector.MeterProvider.Meter("").RegisterCallback([]instrument.Asynchronous{sendGauge}, func(ctx context.Context) {
     sendGauge.Observe(ctx, checkValue, attribute.Key("special").String("X"))
 })
+```
+
+### Example Usage
+
+```go
+package telemetry
+
+import (
+	"fmt"
+
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric/global"
+	"go.opentelemetry.io/otel/metric/instrument"
+	"go.opentelemetry.io/otel/metric/instrument/syncint64"
+)
+
+var (
+	GlobalAttr  []attribute.KeyValue
+	GlobalMeter *Meter
+)
+
+type Meter struct {
+	Success  syncint64.Counter
+	Fail     syncint64.Counter
+	// Valid    syncint64.Counter
+	// Rejected syncint64.Counter
+}
+
+func AddGlobalAttr(v ...attribute.KeyValue) {
+	GlobalAttr = append(GlobalAttr, v...)
+}
+
+func SetGlobalMeter() error {
+	mp := global.MeterProvider()
+
+	m := &Meter{}
+
+	success, err := mp.Meter("").SyncInt64().Counter("validate_success", instrument.WithDescription("number of success validated count"))
+	if err != nil {
+		return fmt.Errorf("failed to initialize validate_success; %w", err)
+	}
+
+	m.Success = success
+
+	fail, err := mp.Meter("").SyncInt64().Counter("validate_fail", instrument.WithDescription("number of error count"))
+	if err != nil {
+		return fmt.Errorf("failed to initialize successCounter; %w", err)
+	}
+
+	m.Fail = fail
+
+    // continue to add metrics
+
+	GlobalMeter = m
+
+	return nil
+}
+```
+
+```go
+package main
+
+//
+// config loaded
+//
+
+// open telemetry
+collector, err := tell.New(ctx, cnf.Telemetry)
+if err != nil {
+    log.Fatal().Err(err).Msg("failed to init telemetry")
+}
+
+defer collector.Shutdown()
+
+telemetry.AddGlobalAttr(attribute.Key("channel").String(cnf.Channel))
+if err := telemetry.SetGlobalMeter(); err != nil {
+    log.Fatal().Err(err).Msg("failed to set metric")
+}
+```
+
+After that use your metrics
+
+```go
+// in somewhere use your metrics
+telemetry.GlobalMeter.Success.Add(ctx, 1, telemetry.GlobalAttr...)
 ```
 
 ### View

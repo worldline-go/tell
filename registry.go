@@ -3,6 +3,7 @@ package tell
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -48,6 +49,10 @@ type MetricReaders struct {
 
 // New generate collectors based on configuration.
 func New(ctx context.Context, cfg Config, views ...view.View) (*Collector, error) {
+	if cfg.Collector == "" {
+		cfg.Collector = os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
+	}
+
 	c := new(Collector)
 	c.Attributes = cfg.Attributes
 
