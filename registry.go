@@ -54,7 +54,7 @@ func New(ctx context.Context, cfg Config, views ...view.View) (*Collector, error
 	}
 
 	if cfg.Collector != "" {
-		log.Info().Msgf("opentelemetry collector: %s", cfg.Collector)
+		log.Info().Msgf("opentelemetry collector endpoint: [%s]", cfg.Collector)
 	}
 
 	c := new(Collector)
@@ -93,13 +93,13 @@ func New(ctx context.Context, cfg Config, views ...view.View) (*Collector, error
 				c.MetricReaders.Otel = otelReader
 				readers = append(readers, otelReader)
 
-				log.Info().Msg("started metric provider for otel")
+				log.Info().Msg("started metric provider for [otel]")
 			case types.MetricPrometheus:
 				prometheusReader := exporter.Prometheus{}.Metric()
 				c.MetricReaders.Prometheus = prometheusReader
 				readers = append(readers, prometheusReader)
 
-				log.Info().Msg("started metric provider for prometheus")
+				log.Info().Msg("started metric provider for [prometheus]")
 			}
 		}
 
@@ -108,7 +108,7 @@ func New(ctx context.Context, cfg Config, views ...view.View) (*Collector, error
 		c.MeterProvider = metric.NewNoopMeterProvider()
 		c.SetMetricProviderGlobal()
 
-		log.Info().Msg("started metric provider noop")
+		log.Info().Msg("started metric provider for [noop]")
 	}
 
 	tracesEnabled := cfg.GetEnabledTraces()
@@ -121,7 +121,7 @@ func New(ctx context.Context, cfg Config, views ...view.View) (*Collector, error
 					return nil, err
 				}
 
-				log.Info().Msg("started trace provider for otel")
+				log.Info().Msg("started trace provider for [otel]")
 			}
 		}
 
@@ -130,7 +130,7 @@ func New(ctx context.Context, cfg Config, views ...view.View) (*Collector, error
 		c.TracerProvider = trace.NewNoopTracerProvider()
 		c.SetTraceProviderGlobal()
 
-		log.Info().Msg("started trace provider noop")
+		log.Info().Msg("started trace provider for [noop]")
 	}
 
 	return c, nil

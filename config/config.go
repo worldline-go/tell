@@ -26,7 +26,7 @@ type Config struct {
 	MetricsSettings MetricsSettings `cfg:"metrics_settings"`
 	// Collector to show URL of grpc otel collector.
 	// If emptry disable for metric and trace. It is add a noop metric/trace and your code works without change.
-	Collector string `env:"OTEL_EXPORTER_OTLP_ENDPOINT"`
+	Collector string
 }
 
 func (c *Config) GetEnabledViews() types.Tells {

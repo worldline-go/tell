@@ -12,6 +12,8 @@ To close some metrics and trace
 # if empty, metrics and trace providers and create noop provider to continue to work same as code perspective.
 # default is empty
 OTEL_EXPORTER_OTLP_ENDPOINT=otel-collector:4317
+# Also TELEMETRY_COLLECTOR can usable for same thing
+# TELEMETRY_COLLECTOR=otel-collector:4317
 # inteval duration so send new metrics to otel collector (using time.Parseduration)
 # default 2s
 TELEMETRY_METRICS_SETTINGS_OTEL_INTERVAL=2s
