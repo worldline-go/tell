@@ -181,14 +181,14 @@ func SetGlobalMeter() error {
 
 	var err error
 
-	m.Success, err = mp.Meter("").SyncInt64().Counter("validate_success", instrument.WithDescription("number of success validated count"))
+	m.Success, err = mp.Meter("").SyncInt64().Counter("validate_success_total", instrument.WithDescription("number of success validated count"))
 	if err != nil {
-		return fmt.Errorf("failed to initialize validate_success; %w", err)
+		return fmt.Errorf("failed to initialize validate_success_total; %w", err)
 	}
 
-	m.Fail, err = mp.Meter("").SyncInt64().Counter("validate_fail", instrument.WithDescription("number of error count"))
+	m.Fail, err = mp.Meter("").SyncInt64().Counter("validate_fail_total", instrument.WithDescription("number of error count"))
 	if err != nil {
-		return fmt.Errorf("failed to initialize successCounter; %w", err)
+		return fmt.Errorf("failed to initialize validate_fail_total; %w", err)
 	}
 
 	//
