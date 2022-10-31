@@ -197,6 +197,11 @@ func SetGlobalMeter() error {
 	GlobalMeter = m
 	return nil
 }
+
+// init for testing purpose, it will assign noop functions
+func init() {
+	_ = SetGlobalMeter()
+}
 ```
 
 ```go
