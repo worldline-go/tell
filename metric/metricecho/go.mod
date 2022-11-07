@@ -1,4 +1,4 @@
-module gitlab.test.igdcs.com/finops/nextgen/utils/metrics/tell/metric/instrumentation/metricecho
+module gitlab.test.igdcs.com/finops/nextgen/utils/metrics/tell/metric/metricecho
 
 go 1.18
 
