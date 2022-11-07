@@ -1,13 +1,12 @@
 package metricecho
 
 import (
-	"fmt"
-
+	"gitlab.test.igdcs.com/finops/nextgen/utils/metrics/tell/tglobal"
 	"go.opentelemetry.io/otel/sdk/metric/aggregation"
 	"go.opentelemetry.io/otel/sdk/metric/view"
 )
 
-func GetViews() ([]view.View, error) {
+func GetViews() []view.View {
 	customBucketView, err := view.New(
 		view.MatchInstrumentName("*request_duration_seconds"),
 		view.WithSetAggregation(aggregation.ExplicitBucketHistogram{
@@ -15,8 +14,12 @@ func GetViews() ([]view.View, error) {
 		}),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("meter custom view cannot set; %w", err)
+		panic(err)
 	}
 
-	return []view.View{customBucketView}, nil
+	return []view.View{customBucketView}
+}
+
+func init() {
+	tglobal.MetricViews.Add("echo", GetViews())
 }

@@ -2,39 +2,30 @@ package tell
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/rs/zerolog/log"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/exporters/prometheus"
 	"go.opentelemetry.io/otel/metric"
 	metricsdk "go.opentelemetry.io/otel/sdk/metric"
-	"go.opentelemetry.io/otel/sdk/metric/view"
 	tracesdk "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
-
-	"gitlab.test.igdcs.com/finops/nextgen/utils/metrics/tell/config"
-	"gitlab.test.igdcs.com/finops/nextgen/utils/metrics/tell/metric/exporter"
-	"gitlab.test.igdcs.com/finops/nextgen/utils/metrics/tell/types"
 )
 
-type Config = config.Config
+var ErrSetConnetion = errors.New("grpc connection not set")
 
 const defaultShutdownTimeOut = 2 * time.Second
 
 // Collector hold metric and trace informations.
 type Collector struct {
 	Conn *grpc.ClientConn
-	// Attributes have common attributes.
-	Attributes map[string]interface{}
 	// metrics
 	MeterProvider    metric.MeterProvider
 	MeterProviderSDK *metricsdk.MeterProvider
-	MetricReaders    MetricReaders
+	MetricReader     metricsdk.Reader
 	// traces
 	TracerProvider    trace.TracerProvider
 	TracerProviderSDK *tracesdk.TracerProvider
@@ -42,13 +33,8 @@ type Collector struct {
 	ShutdownTimeOut time.Duration
 }
 
-type MetricReaders struct {
-	Otel       metricsdk.Reader
-	Prometheus *prometheus.Exporter
-}
-
 // New generate collectors based on configuration.
-func New(ctx context.Context, cfg Config, views ...view.View) (*Collector, error) {
+func New(ctx context.Context, cfg Config) (*Collector, error) {
 	if cfg.Collector == "" {
 		cfg.Collector = os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
 	}
@@ -58,10 +44,9 @@ func New(ctx context.Context, cfg Config, views ...view.View) (*Collector, error
 	}
 
 	c := new(Collector)
-	c.Attributes = cfg.Attributes
 
 	// check grpc need
-	if cfg.Collector != "" && cfg.IsGRPC() {
+	if cfg.Collector != "" {
 		if err := c.ConnectGRPC(ctx, cfg.Collector); err != nil {
 			return nil, err
 		}
@@ -69,83 +54,35 @@ func New(ctx context.Context, cfg Config, views ...view.View) (*Collector, error
 		log.Info().Msg("connected to grpc opentelemetry collector")
 	}
 
-	// metricsViewEnabled := cfg.GetEnabledViews()
-	// if len(metricsViewEnabled) > 0 && !cfg.Disable {
-	// 	// set enabled metric views here and append to views
-	// }
-
-	metricsEnabled := cfg.GetEnabledMetrics()
-	if cfg.Collector != "" && len(metricsEnabled) > 0 {
-		// add meter provider for generate general metric provider
-		var readers []metricsdk.Reader
-		// set metrics
-		for _, v := range metricsEnabled {
-			switch v {
-			case types.MetricOtel:
-
-				otelExp := exporter.Otel{Conn: c.Conn, OtelSetting: cfg.MetricsSettings.Otel}
-
-				otelReader, err := otelExp.Metric(ctx)
-				if err != nil {
-					return nil, fmt.Errorf("failed otel reader; %w", err)
-				}
-
-				c.MetricReaders.Otel = otelReader
-				readers = append(readers, otelReader)
-
-				log.Info().Msg("started metric provider for [otel]")
-			case types.MetricPrometheus:
-				prometheusReader := exporter.Prometheus{}.Metric()
-				c.MetricReaders.Prometheus = prometheusReader
-				readers = append(readers, prometheusReader)
-
-				log.Info().Msg("started metric provider for [prometheus]")
-			}
+	// metric
+	if cfg.Collector != "" && !cfg.Metric.Disable {
+		if err := c.MetricProvider(ctx, cfg.Metric.Provider); err != nil {
+			return nil, fmt.Errorf("failed initialize metric provider; %w", err)
 		}
 
-		c.MetricProvider(views, readers...).SetMetricProviderGlobal()
+		log.Info().Msg("started metric provider for [otel]")
 	} else {
 		c.MeterProvider = metric.NewNoopMeterProvider()
-		c.SetMetricProviderGlobal()
-
 		log.Info().Msg("started metric provider for [noop]")
 	}
 
-	tracesEnabled := cfg.GetEnabledTraces()
-	if cfg.Collector != "" && len(tracesEnabled) > 0 {
-		// set metrics
-		for _, v := range tracesEnabled {
-			switch v {
-			case types.TraceOtel:
-				if err := c.TraceProvider(ctx); err != nil {
-					return nil, err
-				}
+	c.SetMetricProviderGlobal()
 
-				log.Info().Msg("started trace provider for [otel]")
-			}
+	// trace
+	if cfg.Collector != "" && !cfg.Trace.Disable {
+		if err := c.TraceProvider(ctx, cfg.Trace.Provider); err != nil {
+			return nil, fmt.Errorf("failed initialize metric provider; %w", err)
 		}
 
-		c.SetTraceProviderGlobal()
+		log.Info().Msg("started trace provider for [otel]")
 	} else {
 		c.TracerProvider = trace.NewNoopTracerProvider()
-		c.SetTraceProviderGlobal()
-
 		log.Info().Msg("started trace provider for [noop]")
 	}
 
+	c.SetTraceProviderGlobal()
+
 	return c, nil
-}
-
-// Gets attributes key-value.
-func (c *Collector) GetAttributes() []attribute.KeyValue {
-	// add common attributes
-	var attributes []attribute.KeyValue //nolint:prealloc // return nil on empty
-
-	for k, v := range c.Attributes {
-		attributes = append(attributes, attribute.String(strings.ToLower(k), fmt.Sprint(v)))
-	}
-
-	return attributes
 }
 
 // Shutdown to flush and shutdown providers and close grpc connection.
@@ -164,20 +101,23 @@ func (c *Collector) Shutdown() (err error) {
 		}
 	}()
 
-	ctx, cancelCtx := context.WithTimeout(context.Background(), c.ShutdownTimeOut)
-	defer cancelCtx()
+	ctxMetric, cancelCtxMetric := context.WithTimeout(context.Background(), c.ShutdownTimeOut)
+	defer cancelCtxMetric()
 
 	if c.MeterProviderSDK != nil {
-		if errShutdown := c.MeterProviderSDK.Shutdown(ctx); errShutdown != nil {
+		if errShutdown := c.MeterProviderSDK.Shutdown(ctxMetric); errShutdown != nil {
 			err = fmt.Errorf("failed to shutdown meter provider; %w; %v", errShutdown, err)
 		}
 	}
 
+	ctxTrace, cancelCtxTrace := context.WithTimeout(context.Background(), c.ShutdownTimeOut)
+	defer cancelCtxTrace()
+
 	if c.TracerProviderSDK != nil {
-		if errShutdown := c.TracerProviderSDK.Shutdown(ctx); errShutdown != nil {
+		if errShutdown := c.TracerProviderSDK.Shutdown(ctxTrace); errShutdown != nil {
 			err = fmt.Errorf("failed to shutdown trace provider; %w; %v", errShutdown, err)
 		}
 	}
 
-	return
+	return nil
 }

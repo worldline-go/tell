@@ -19,7 +19,11 @@ import (
 // set global propagator to tracecontext (the default is no-op).
 // otel.SetTextMapPropagator(propagation.TraceContext{})
 
-func (c *Collector) TraceProvider(ctx context.Context) error {
+func (c *Collector) TraceProvider(ctx context.Context, _ TraceProviderSettings) error {
+	if c.Conn == nil {
+		return ErrSetConnetion
+	}
+
 	// Set up a trace exporter
 	traceExporter, err := otlptracegrpc.New(ctx, otlptracegrpc.WithGRPCConn(c.Conn))
 	if err != nil {

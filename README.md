@@ -170,10 +170,6 @@ func AddGlobalAttr(v ...attribute.KeyValue) {
 	GlobalAttr = append(GlobalAttr, v...)
 }
 
-func AddGlobalAttr(v ...attribute.KeyValue) {
-	GlobalAttr = append(GlobalAttr, v...)
-}
-
 func SetGlobalMeter() error {
 	mp := global.MeterProvider()
 
