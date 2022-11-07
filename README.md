@@ -16,7 +16,7 @@ OTEL_EXPORTER_OTLP_ENDPOINT=otel-collector:4317
 # TELEMETRY_COLLECTOR=otel-collector:4317
 # inteval duration so send new metrics to otel collector (using time.Parseduration)
 # default 2s
-TELEMETRY_METRICS_SETTINGS_OTEL_INTERVAL=2s
+TELEMETRY_METRIC_PROVIDER_INTERVAL=2s
 ```
 
 > `TELEMETRY_` prefix comes with igconfig!
@@ -140,65 +140,36 @@ collector.MeterProvider.Meter("").RegisterCallback([]instrument.Asynchronous{sen
 })
 ```
 
-### Example Usage
+### View
+
+View is design how to looks like of your metrics. With this view you can setup your histogram bucket's values.
+
+`MatchInstrumentName` is important, explain which metric we will change.  
+In here we used `*request_duration_seconds` because application name will come as prefix.
 
 ```go
-package telemetry
-
-import (
-	"fmt"
-
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/metric/global"
-	"go.opentelemetry.io/otel/metric/instrument"
-	"go.opentelemetry.io/otel/metric/instrument/syncint64"
-)
-
-var (
-	GlobalAttr  []attribute.KeyValue
-	GlobalMeter *Meter
-)
-
-type Meter struct {
-	Success  syncint64.Counter
-	Fail     syncint64.Counter
-	// Valid    syncint64.Counter
-	// Rejected syncint64.Counter
-}
-
-func AddGlobalAttr(v ...attribute.KeyValue) {
-	GlobalAttr = append(GlobalAttr, v...)
-}
-
-func SetGlobalMeter() error {
-	mp := global.MeterProvider()
-
-	m := &Meter{}
-
-	var err error
-
-	m.Success, err = mp.Meter("").SyncInt64().Counter("validate_success_total", instrument.WithDescription("number of success validated count"))
+customBucketView, err := view.New(
+		view.MatchInstrumentName("*request_duration_seconds"),
+		view.WithSetAggregation(aggregation.ExplicitBucketHistogram{
+			Boundaries: []float64{.005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10},
+		}),
+	)
 	if err != nil {
-		return fmt.Errorf("failed to initialize validate_success_total; %w", err)
+		return nil, fmt.Errorf("meter custom view cannot set; %w", err)
 	}
-
-	m.Fail, err = mp.Meter("").SyncInt64().Counter("validate_fail_total", instrument.WithDescription("number of error count"))
-	if err != nil {
-		return fmt.Errorf("failed to initialize validate_fail_total; %w", err)
-	}
-
-	//
-	// continue to add metrics
-
-	GlobalMeter = m
-	return nil
-}
-
-// init for testing purpose, it will assign noop functions
-func init() {
-	_ = SetGlobalMeter()
-}
 ```
+
+If you have views, you need to add before to initialize metric provider.
+
+Add to the tglobal
+
+```go
+tglobal.MetricViews.Add("echo", GetViews()) // accepts []view.View
+```
+
+### Example Usage
+
+Add to the project this package [_example/telemetry/metric.go](/_example/telemetry/metric.go) to hold the custom metrics.
 
 ```go
 package main
@@ -228,58 +199,22 @@ After that use your metrics
 telemetry.GlobalMeter.Success.Add(ctx, 1, telemetry.GlobalAttr...)
 ```
 
-### View
-
-View is design how to looks like of your metrics. With this view you can setup your histogram bucket's values.
-
-`MatchInstrumentName` is important, explain which metric we will change.  
-In here we used `*request_duration_seconds` because application name will come as prefix.
-
-```go
-customBucketView, err := view.New(
-		view.MatchInstrumentName("*request_duration_seconds"),
-		view.WithSetAggregation(aggregation.ExplicitBucketHistogram{
-			Boundaries: []float64{.005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10},
-		}),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("meter custom view cannot set; %w", err)
-	}
-```
-
-After that when initializing the collector, pass this views.
-
-```go
-collector, err := tell.New(ctx, cfg.Telemetry, customBucketView)
-```
-
 ### Echo
 
 #### Metric
 
 ```sh
-go get gitlab.test.igdcs.com/finops/nextgen/utils/metrics/tell/metric/instrumentation/metricecho
+go get gitlab.test.igdcs.com/finops/nextgen/utils/metrics/tell/metric/metricecho
 ```
 
 Use our Echo framework's middleware to share metrics.
-
-Before to generate collector, add the echo's views
-
-```go
-metricEchoViews, err := metricecho.GetViews()
-if err != nil {
-	return fmt.Errorf("failed to get metricecho views; %w", err)
-}
-
-collector, err := tell.New(ctx, cfg.Telemetry, metricEchoViews...)
-```
-
-After that just enable middleware of metricecho
 
 ```go
 // add echo metrics
 e.Use(metricecho.HTTPMetrics(nil))
 ```
+
+metricecho package has init function and records views always, no need to additional settings.
 
 #### Trace
 
@@ -342,21 +277,21 @@ span.SetAttributes(attribute.Key("request.count.set").Int64(countInt))
 
 To test in local machine deploy otel-collector, grafana, prometheus and jaeger:
 
-_Do it in a some development folder_
-
 ```sh
+cd $(mktemp -d)
 curl -fksSL https://gitlab.test.igdcs.com/finops/nextgen/utils/metrics/tell/-/archive/main/tell-main.tar.gz?path=compose | tar --overwrite -zx
 
 docker-compose -p tell --file tell-main-compose/compose/compose.yml up -d
 ```
 
-| Project       | Port  |
-|---------------|-------|
-| grafana       | 3000  |
-| jaeger        | 16686 |
-| otel-grpc     | 4317  |
-| otel-metric   | 8888  |
-| otel-exported | 8889  |
+| Project                    | Port  |
+|----------------------------|-------|
+| grafana                    | 3000  |
+| jaeger                     | 16686 |
+| prometheus                 | 9090  |
+| collector -> otel-grpc     | 4317  |
+| collector -> otel-metric   | 8888  |
+| collector -> otel-exported | 8889  |
 
 Check the status of tell compose
 
@@ -372,6 +307,8 @@ docker-compose -p tell down --volumes
 
 ## Resources
 
+https://github.com/open-telemetry/opentelemetry-go  
+https://opentelemetry.io/registry/  
 https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/examples/demo  
 https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/resource/semantic_conventions/README.md  
 https://docs.docker.com/engine/swarm/services/#create-services-using-templates
