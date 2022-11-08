@@ -83,8 +83,6 @@ func New(ctx context.Context, cfg Config) (*Collector, error) {
 	}
 
 	c.SetMetricProviderGlobal()
-	c.isUp = 1
-	c.setUpMetric()
 
 	// trace
 	if cfg.Collector != "" && !cfg.Trace.Disable {
@@ -99,6 +97,10 @@ func New(ctx context.Context, cfg Config) (*Collector, error) {
 	}
 
 	c.SetTraceProviderGlobal()
+
+	// everything is works fine, send up information
+	c.isUp = 1
+	c.setUpMetric()
 
 	return c, nil
 }
