@@ -9,6 +9,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/metric/instrument"
 	metricsdk "go.opentelemetry.io/otel/sdk/metric"
 	tracesdk "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
@@ -31,6 +32,21 @@ type Collector struct {
 	TracerProviderSDK *tracesdk.TracerProvider
 	// ShutdownTimeOut for closing providers, default 2 seconds.
 	ShutdownTimeOut time.Duration
+
+	isUp int64
+}
+
+func (c *Collector) setUpMetric() {
+	up, err := c.MeterProvider.Meter("").AsyncInt64().Gauge("up", instrument.WithDescription("application up status"))
+	if err != nil {
+		log.Error().Err(err).Msg("failed to set up gauge metric")
+	}
+
+	if err := c.MeterProvider.Meter("").RegisterCallback([]instrument.Asynchronous{up}, func(ctx context.Context) {
+		up.Observe(ctx, c.isUp)
+	}); err != nil {
+		log.Error().Err(err).Msg("failed to register up gauge metric")
+	}
 }
 
 // New generate collectors based on configuration.
@@ -67,6 +83,8 @@ func New(ctx context.Context, cfg Config) (*Collector, error) {
 	}
 
 	c.SetMetricProviderGlobal()
+	c.isUp = 1
+	c.setUpMetric()
 
 	// trace
 	if cfg.Collector != "" && !cfg.Trace.Disable {
@@ -88,6 +106,8 @@ func New(ctx context.Context, cfg Config) (*Collector, error) {
 // Shutdown to flush and shutdown providers and close grpc connection.
 // Providers will not export metrics after shutdown.
 func (c *Collector) Shutdown() (err error) {
+	c.isUp = 0
+
 	// set the default context timeout
 	if c.ShutdownTimeOut == 0 {
 		c.ShutdownTimeOut = defaultShutdownTimeOut
