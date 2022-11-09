@@ -309,6 +309,7 @@ docker-compose -p tell down --volumes
 
 https://github.com/open-telemetry/opentelemetry-go  
 https://opentelemetry.io/registry/  
+https://pkg.go.dev/go.opentelemetry.io/collector/exporter/prometheusexporter#section-readme  
 https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/examples/demo  
 https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/resource/semantic_conventions/README.md  
 https://docs.docker.com/engine/swarm/services/#create-services-using-templates
