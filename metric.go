@@ -13,7 +13,7 @@ import (
 	"gitlab.test.igdcs.com/finops/nextgen/utils/metrics/tell/tglobal"
 )
 
-var defaultInterval = 2 * time.Second
+var defaultInterval = 5 * time.Second
 
 // MetricProvider adds required labels to readers and return a meterprovider.
 // Run shutdown will flush any remaining spans and shut down the exporter.
