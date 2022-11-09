@@ -15,8 +15,8 @@ OTEL_EXPORTER_OTLP_ENDPOINT=otel-collector:4317
 # Also TELEMETRY_COLLECTOR can usable for same thing
 # TELEMETRY_COLLECTOR=otel-collector:4317
 # inteval duration so send new metrics to otel collector (using time.Parseduration)
-# default 2s
-TELEMETRY_METRIC_PROVIDER_INTERVAL=2s
+# default 5s
+TELEMETRY_METRIC_PROVIDER_INTERVAL=5s
 ```
 
 > `TELEMETRY_` prefix comes with igconfig!
