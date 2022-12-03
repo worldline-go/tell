@@ -10,7 +10,7 @@ import (
 	metricsdk "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 
-	"gitlab.test.igdcs.com/finops/nextgen/utils/metrics/tell/tglobal"
+	"github.com/worldline-go/tell/tglobal"
 )
 
 var defaultInterval = 5 * time.Second

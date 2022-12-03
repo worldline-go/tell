@@ -3,7 +3,7 @@
 This library include metric and trace helper functions to work directly in finops.
 
 ```sh
-go get gitlab.test.igdcs.com/finops/nextgen/utils/metrics/tell
+go get github.com/worldline-go/tell/metric
 ```
 
 To close some metrics and trace
@@ -85,7 +85,14 @@ global.MeterProvider()
 
 To add some metric, use collector's MeterProvider to create a metric entry and add some values to that entry.
 
-Hold this meters in a struct to reach easily.
+> Hold this meters in a struct to reach easily. Check [example](_example/telemetry/metric.go)
+
+```go
+// to get meter provider in collector
+collector.MeterProvider 
+// to get meter provider in global
+global.MeterProvider()
+```
 
 __Counter:__
 
@@ -138,6 +145,34 @@ if err != nil {
 collector.MeterProvider.Meter("").RegisterCallback([]instrument.Asynchronous{sendGauge}, func(ctx context.Context) {
     sendGauge.Observe(ctx, checkValue, attribute.Key("special").String("X"))
 })
+```
+
+In struct you can hold a value and add a register function.
+
+```go
+type Mystruct struct {
+    registerMetrics sync.Once
+}
+
+func (s *Mystruct) registerGaugeMetrics() error {
+    var err error
+
+    s.registerMetrics.Do(func() {
+        err = global.MeterProvider().Meter("").RegisterCallback(
+            []instrument.Asynchronous{telemetry.GlobalMeter.lastPublishedID},
+            func(ctx context.Context) {
+                telemetry.GlobalMeter.lastPublishedID.Observe(ctx, s.lastPublishedID, telemetry.GlobalAttr...)
+            },
+        )
+
+        if err != nil {
+            err = fmt.Errorf("failed to register gauge metrics; %w", err)
+        }
+    })
+
+
+    return err
+}
 ```
 
 ### View
@@ -204,7 +239,7 @@ telemetry.GlobalMeter.Success.Add(ctx, 1, telemetry.GlobalAttr...)
 #### Metric
 
 ```sh
-go get gitlab.test.igdcs.com/finops/nextgen/utils/metrics/tell/metric/metricecho
+go get github.com/worldline-go/tell/metric/metricecho
 ```
 
 Use our Echo framework's middleware to share metrics.
@@ -265,7 +300,9 @@ Start a trace with using previous context. After the start it will create new co
 If you not use context or not give previous one tracer, it will start as root and not good for view.
 
 ```go
-ctxTrace, span := collector.TracerProvider.Tracer(c.Path()).Start(c.Request().Context(), "PostCount")
+// collector.TracerProvider is our trace provider and it is global
+// to get tracer provider // go.opentelemetry.io/otel
+ctxTrace, span := otel.GetTracerProvider().Tracer(c.Path()).Start(c.Request().Context(), "PostCount")
 defer span.End()
 
 // add extra values to your trace data
@@ -277,9 +314,11 @@ span.SetAttributes(attribute.Key("request.count.set").Int64(countInt))
 
 To test in local machine deploy otel-collector, grafana, prometheus and jaeger:
 
+__TODO:__ export folder
+
 ```sh
 cd $(mktemp -d)
-curl -fksSL https://gitlab.test.igdcs.com/finops/nextgen/utils/metrics/tell/-/archive/main/tell-main.tar.gz?path=compose | tar --overwrite -zx
+curl -fksSL  | tar --overwrite -zx
 
 docker-compose -p tell --file tell-main-compose/compose/compose.yml up -d
 ```

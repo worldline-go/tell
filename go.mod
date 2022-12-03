@@ -1,4 +1,4 @@
-module gitlab.test.igdcs.com/finops/nextgen/utils/metrics/tell
+module github.com/worldline-go/tell
 
 go 1.18
 
