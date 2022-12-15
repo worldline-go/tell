@@ -1,23 +1,24 @@
 package metricecho
 
 import (
-	"gitlab.test.igdcs.com/finops/nextgen/utils/metrics/tell/tglobal"
+	"github.com/worldline-go/tell/tglobal"
+	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/metric/aggregation"
-	"go.opentelemetry.io/otel/sdk/metric/view"
 )
 
-func GetViews() []view.View {
-	customBucketView, err := view.New(
-		view.MatchInstrumentName("*request_duration_seconds"),
-		view.WithSetAggregation(aggregation.ExplicitBucketHistogram{
-			Boundaries: []float64{.005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10},
-		}),
+func GetViews() []metric.View {
+	customBucketView := metric.NewView(
+		metric.Instrument{
+			Name: "*request_duration_seconds",
+		},
+		metric.Stream{
+			Aggregation: aggregation.ExplicitBucketHistogram{
+				Boundaries: []float64{.005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10},
+			},
+		},
 	)
-	if err != nil {
-		panic(err)
-	}
 
-	return []view.View{customBucketView}
+	return []metric.View{customBucketView}
 }
 
 func init() {

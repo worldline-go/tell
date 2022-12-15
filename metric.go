@@ -44,7 +44,8 @@ func (c *Collector) MetricProvider(ctx context.Context, cfg MetricProviderSettin
 
 	options := []metricsdk.Option{
 		metricsdk.WithResource(resource.Environment()),
-		metricsdk.WithReader(c.MetricReader, tglobal.MetricViews.GetViews()...),
+		metricsdk.WithView(tglobal.MetricViews.GetViews()...),
+		metricsdk.WithReader(c.MetricReader),
 	}
 
 	meterProvider := metricsdk.NewMeterProvider(

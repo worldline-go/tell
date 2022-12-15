@@ -3,22 +3,22 @@ package tglobal
 import (
 	"sync"
 
-	"go.opentelemetry.io/otel/sdk/metric/view"
+	"go.opentelemetry.io/otel/sdk/metric"
 )
 
 var MetricViews = MetricViewsType{}
 
 type MetricViewsType struct {
-	store map[string][]view.View
+	store map[string][]metric.View
 	mutex sync.RWMutex
 }
 
-func (g *MetricViewsType) Add(name string, v []view.View) *MetricViewsType {
+func (g *MetricViewsType) Add(name string, v []metric.View) *MetricViewsType {
 	g.mutex.Lock()
 	defer g.mutex.Unlock()
 
 	if g.store == nil {
-		g.store = make(map[string][]view.View)
+		g.store = make(map[string][]metric.View)
 	}
 
 	g.store[name] = v
@@ -37,14 +37,14 @@ func (g *MetricViewsType) Delete(name string) *MetricViewsType {
 	return g
 }
 
-func (g *MetricViewsType) GetViewGroup(name string) []view.View {
+func (g *MetricViewsType) GetViewGroup(name string) []metric.View {
 	g.mutex.RLock()
 	defer g.mutex.RUnlock()
 
 	return g.store[name]
 }
 
-func (g *MetricViewsType) GetViews() []view.View {
+func (g *MetricViewsType) GetViews() []metric.View {
 	if g.store == nil {
 		return nil
 	}
@@ -52,7 +52,7 @@ func (g *MetricViewsType) GetViews() []view.View {
 	g.mutex.RLock()
 	defer g.mutex.RUnlock()
 
-	views := make([]view.View, 0, len(g.store))
+	views := make([]metric.View, 0, len(g.store))
 
 	for k := range g.store {
 		views = append(views, g.store[k]...)
