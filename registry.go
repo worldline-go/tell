@@ -33,20 +33,33 @@ type Collector struct {
 	// ShutdownTimeOut for closing providers, default 2 seconds.
 	ShutdownTimeOut time.Duration
 
-	isUp int64
+	isUp       int64
+	registered []metric.Registration
 }
 
 func (c *Collector) setUpMetric() {
-	up, err := c.MeterProvider.Meter("").AsyncInt64().Gauge("up", instrument.WithDescription("application up status"))
+	meter := c.MeterProvider.Meter("")
+
+	up, err := meter.Int64ObservableGauge("up", instrument.WithDescription("application up status"))
 	if err != nil {
 		log.Error().Err(err).Msg("failed to set up gauge metric")
 	}
 
-	if err := c.MeterProvider.Meter("").RegisterCallback([]instrument.Asynchronous{up}, func(ctx context.Context) {
-		up.Observe(ctx, c.isUp)
-	}); err != nil {
+	regUp, err := meter.RegisterCallback(func(ctx context.Context, o metric.Observer) error {
+		o.ObserveInt64(up, c.isUp)
+		return nil
+	}, up)
+
+	if err != nil {
 		log.Error().Err(err).Msg("failed to register up gauge metric")
 	}
+
+	c.AddRegister(regUp)
+}
+
+// AddRegister adding metric.Registration for unregister in shutdown.
+func (c *Collector) AddRegister(r metric.Registration) {
+	c.registered = append(c.registered, r)
 }
 
 // New generate collectors based on configuration.
@@ -122,6 +135,11 @@ func (c *Collector) Shutdown() (err error) {
 			}
 		}
 	}()
+
+	// remove registiration
+	for _, r := range c.registered {
+		r.Unregister()
+	}
 
 	ctxMetric, cancelCtxMetric := context.WithTimeout(context.Background(), c.ShutdownTimeOut)
 	defer cancelCtxMetric()

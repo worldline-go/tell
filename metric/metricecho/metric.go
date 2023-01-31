@@ -9,8 +9,6 @@ import (
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/global"
 	"go.opentelemetry.io/otel/metric/instrument"
-	"go.opentelemetry.io/otel/metric/instrument/syncfloat64"
-	"go.opentelemetry.io/otel/metric/instrument/syncint64"
 )
 
 // HTTPRecorderConfig lists all available configuration options for HTTPRecorder.
@@ -59,9 +57,9 @@ type HTTPLabels struct {
 type HTTPRecorder struct {
 	cfg         HTTPRecorderConfig
 	mp          metric.MeterProvider
-	reqTotal    syncint64.Counter
-	reqDuration syncfloat64.Histogram
-	reqInFlight syncint64.UpDownCounter
+	reqTotal    instrument.Int64Counter
+	reqDuration instrument.Float64Histogram
+	reqInFlight instrument.Int64UpDownCounter
 }
 
 // NewHTTPRecorder creates a new HTTPRecorder. Calling this function will automatically register the new metrics to reg.
@@ -96,8 +94,10 @@ func (h *HTTPRecorder) namespacedValue(v string) string {
 }
 
 func (h *HTTPRecorder) register() error {
+	meter := h.mp.Meter("")
+
 	if h.cfg.EnableTotalMetric {
-		reqTotal, err := h.mp.Meter("").SyncInt64().Counter(
+		reqTotal, err := meter.Int64Counter(
 			h.namespacedValue("http_requests_total"),
 			instrument.WithDescription("The total number of requests"),
 		)
@@ -109,7 +109,7 @@ func (h *HTTPRecorder) register() error {
 	}
 
 	if h.cfg.EnableDurMetric {
-		reqDuration, err := h.mp.Meter("").SyncFloat64().Histogram(
+		reqDuration, err := meter.Float64Histogram(
 			h.namespacedValue("request_duration_seconds"),
 			instrument.WithDescription("The total duration of a request in seconds"),
 		)
@@ -121,7 +121,7 @@ func (h *HTTPRecorder) register() error {
 	}
 
 	if h.cfg.EnableInFlightMetric {
-		reqInFlight, err := h.mp.Meter("").SyncInt64().Counter(
+		reqInFlight, err := meter.Int64Counter(
 			h.namespacedValue("requests_inflight_total"),
 			instrument.WithDescription("The current number of in-flight requests"),
 		)
