@@ -136,11 +136,6 @@ func (c *Collector) Shutdown() (err error) {
 		}
 	}()
 
-	// remove registiration
-	for _, r := range c.registered {
-		r.Unregister()
-	}
-
 	ctxMetric, cancelCtxMetric := context.WithTimeout(context.Background(), c.ShutdownTimeOut)
 	defer cancelCtxMetric()
 
@@ -157,6 +152,11 @@ func (c *Collector) Shutdown() (err error) {
 		if errShutdown := c.TracerProviderSDK.Shutdown(ctxTrace); errShutdown != nil {
 			err = fmt.Errorf("failed to shutdown trace provider; %w; %v", errShutdown, err)
 		}
+	}
+
+	// remove registiration
+	for _, r := range c.registered {
+		r.Unregister()
 	}
 
 	return nil

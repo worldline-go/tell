@@ -98,7 +98,7 @@ __Counter:__
 
 ```go
 successCounter, err = collector.MeterProvider.Meter("").
-    SyncInt64().Counter("request_success", instrument.WithDescription("number of success count"))
+    Int64Counter("request_success", instrument.WithDescription("number of success count"))
 if err != nil {
     log.Panic().Msgf("failed to initialize successCounter; %w", err)
 }
@@ -111,7 +111,7 @@ __Up/Down Counter:__ this is same as counter but it can also decrese.
 
 ```go
 counterUpDown, err = collector.MeterProvider.Meter("").
-    SyncInt64().UpDownCounter("request_success", instrument.WithDescription("number of success count"))
+    Int64UpDownCounter("request_success", instrument.WithDescription("number of success count"))
 if err != nil {
     log.Panic().Msgf("failed to initialize successCounter; %w", err)
 }
@@ -124,7 +124,7 @@ __Histogram:__
 
 ```go
 valuehistogram, err = collector.MeterProvider.Meter("").
-    SyncFloat64().Histogram("request_histogram", instrument.WithDescription("value histogram"))
+    Float64Histogram("request_histogram", instrument.WithDescription("value histogram"))
 if err != nil {
     log.Panic().Msgf("failed to initialize valuehistogram; %w", err)
 }
@@ -136,62 +136,44 @@ valuehistogram.Record(c.Request().Context(), float64(countInt), attribute.Key("s
 __Gauge:__ this is special and it need to be run with async and we need to register to callback. It is like background operation.
 
 ```go
-sendGauge, err = collector.MeterProvider.Meter("").AsyncInt64().Gauge("send", instrument.WithDescription("async gauge"))
+meter := collector.MeterProvider.Meter("")
+
+up, err := meter.Int64ObservableGauge("up", instrument.WithDescription("application up status"))
 if err != nil {
-    log.Panic().Msgf("failed to initialize sendGauge; %w", err)
+    log.Error().Err(err).Msg("failed to set up gauge metric")
 }
 
-// check value will be checked in this callback
-collector.MeterProvider.Meter("").RegisterCallback([]instrument.Asynchronous{sendGauge}, func(ctx context.Context) {
-    sendGauge.Observe(ctx, checkValue, attribute.Key("special").String("X"))
-})
-```
+regUp, err := meter.RegisterCallback(func(ctx context.Context, o metric.Observer) error {
+    o.ObserveInt64(up, c.isUp) // value to observe
+    return nil
+}, up)
 
-In struct you can hold a value and add a register function.
-
-```go
-type Mystruct struct {
-    registerMetrics sync.Once
+if err != nil {
+    log.Error().Err(err).Msg("failed to register up gauge metric")
 }
 
-func (s *Mystruct) registerGaugeMetrics() error {
-    var err error
-
-    s.registerMetrics.Do(func() {
-        err = global.MeterProvider().Meter("").RegisterCallback(
-            []instrument.Asynchronous{telemetry.GlobalMeter.lastPublishedID},
-            func(ctx context.Context) {
-                telemetry.GlobalMeter.lastPublishedID.Observe(ctx, s.lastPublishedID, telemetry.GlobalAttr...)
-            },
-        )
-
-        if err != nil {
-            err = fmt.Errorf("failed to register gauge metrics; %w", err)
-        }
-    })
-
-
-    return err
-}
+// shutdown will deregister
+c.AddRegister(regUp)
 ```
 
 ### View
 
 View is design how to looks like of your metrics. With this view you can setup your histogram bucket's values.
 
-`MatchInstrumentName` is important, explain which metric we will change.  
+`Name` is important, explain which metric we will change.  
 In here we used `*request_duration_seconds` because application name will come as prefix.
 
 ```go
-customBucketView, err := view.New(
-		view.MatchInstrumentName("*request_duration_seconds"),
-		view.WithSetAggregation(aggregation.ExplicitBucketHistogram{
-			Boundaries: []float64{.005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10},
-		}),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("meter custom view cannot set; %w", err)
-	}
+customBucketView := metric.NewView(
+    metric.Instrument{
+        Name: "*request_duration_seconds",
+    },
+    metric.Stream{
+        Aggregation: aggregation.ExplicitBucketHistogram{
+            Boundaries: []float64{.005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10},
+        },
+    },
+)
 ```
 
 If you have views, you need to add before to initialize metric provider.
