@@ -300,7 +300,7 @@ __TODO:__ export folder
 
 ```sh
 cd $(mktemp -d)
-curl -fksSL https://worldline-go.github.io/tell/mugo.tar.gz | tar --overwrite -zx
+curl -fksSL https://worldline-go.github.io/tell/compose.tar.gz | tar --overwrite -zx
 
 docker-compose -p tell --file compose/compose.yml up -d
 ```

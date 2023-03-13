@@ -13,7 +13,7 @@ jobs:
         run: |
           curl -fsSL https://github.com/rytsh/mugo/releases/download/v0.4.2/mugo_Linux_x86_64.tar.gz | sudo tar -xz --overwrite -C /usr/local/bin/
           mkdir -p dist
-          tar -czf dist/mugo.tar.gz -C ./compose .
+          tar -czf dist/compose.tar.gz -C ./compose .
           mugo -t -d '{"dir":"dist","url":"https://worldline-go.github.io/tell","output":"dist"}' -w "." https://github.com/rytsh/mugo/raw/main/templates/folderInfo.tpl
       # publish page
       - uses: peaceiris/actions-gh-pages@v3
