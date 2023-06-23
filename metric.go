@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
-	"go.opentelemetry.io/otel/metric/global"
 	metricsdk "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 
@@ -60,7 +60,7 @@ func (c *Collector) MetricProvider(ctx context.Context, cfg MetricProviderSettin
 
 // SetMetricProviderGlobal to globally set provider.
 func (c *Collector) SetMetricProviderGlobal() *Collector {
-	global.SetMeterProvider(c.MeterProvider)
+	otel.SetMeterProvider(c.MeterProvider)
 
 	return c
 }

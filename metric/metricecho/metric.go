@@ -5,10 +5,9 @@ import (
 	"fmt"
 	"time"
 
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
-	"go.opentelemetry.io/otel/metric/global"
-	"go.opentelemetry.io/otel/metric/instrument"
 )
 
 // HTTPRecorderConfig lists all available configuration options for HTTPRecorder.
@@ -57,17 +56,17 @@ type HTTPLabels struct {
 type HTTPRecorder struct {
 	cfg         HTTPRecorderConfig
 	mp          metric.MeterProvider
-	reqTotal    instrument.Int64Counter
-	reqDuration instrument.Float64Histogram
-	reqInFlight instrument.Int64UpDownCounter
+	reqTotal    metric.Int64Counter
+	reqDuration metric.Float64Histogram
+	reqInFlight metric.Int64UpDownCounter
 }
 
 // NewHTTPRecorder creates a new HTTPRecorder. Calling this function will automatically register the new metrics to reg.
-// If reg is nil, it will use prometheus' default registerer. More information about configuration options in cfg can be
+// If meter provider is nil, it will use otel's global provider. More information about configuration options in cfg can be
 // found in documentation for HTTPRecorderConfig.
 func NewHTTPRecorder(cfg HTTPRecorderConfig, meterProvider metric.MeterProvider) *HTTPRecorder {
 	if meterProvider == nil {
-		meterProvider = global.MeterProvider()
+		meterProvider = otel.GetMeterProvider()
 	}
 
 	m := HTTPRecorder{
@@ -99,7 +98,7 @@ func (h *HTTPRecorder) register() error {
 	if h.cfg.EnableTotalMetric {
 		reqTotal, err := meter.Int64Counter(
 			h.namespacedValue("http_requests_total"),
-			instrument.WithDescription("The total number of requests"),
+			metric.WithDescription("The total number of requests"),
 		)
 		if err != nil {
 			return fmt.Errorf("meter %s cannot set; %w", "http_requests_total", err)
@@ -111,7 +110,7 @@ func (h *HTTPRecorder) register() error {
 	if h.cfg.EnableDurMetric {
 		reqDuration, err := meter.Float64Histogram(
 			h.namespacedValue("request_duration_seconds"),
-			instrument.WithDescription("The total duration of a request in seconds"),
+			metric.WithDescription("The total duration of a request in seconds"),
 		)
 		if err != nil {
 			return fmt.Errorf("meter %s cannot set; %w", "request_duration_seconds", err)
@@ -121,9 +120,9 @@ func (h *HTTPRecorder) register() error {
 	}
 
 	if h.cfg.EnableInFlightMetric {
-		reqInFlight, err := meter.Int64Counter(
+		reqInFlight, err := meter.Int64UpDownCounter(
 			h.namespacedValue("requests_inflight_total"),
-			instrument.WithDescription("The current number of in-flight requests"),
+			metric.WithDescription("The current number of in-flight requests"),
 		)
 		if err != nil {
 			return fmt.Errorf("meter %s cannot set; %w", "requests_inflight_total", err)
@@ -142,8 +141,10 @@ func (h *HTTPRecorder) AddRequestToTotal(ctx context.Context, values HTTPLabels)
 	}
 
 	h.reqTotal.Add(ctx, 1,
-		attribute.String("method", values.Method),
-		attribute.Int("code", values.Code),
+		metric.WithAttributes(
+			attribute.String("method", values.Method),
+			attribute.Int("code", values.Code),
+		),
 	)
 }
 
@@ -155,9 +156,11 @@ func (h *HTTPRecorder) AddRequestDuration(ctx context.Context, duration time.Dur
 
 	h.reqDuration.Record(
 		ctx, duration.Seconds(),
-		attribute.String("method", values.Method),
-		attribute.String("path", values.Path),
-		attribute.Int("code", values.Code),
+		metric.WithAttributes(
+			attribute.String("method", values.Method),
+			attribute.String("path", values.Path),
+			attribute.Int("code", values.Code),
+		),
 	)
 }
 
@@ -168,7 +171,7 @@ func (h *HTTPRecorder) AddInFlightRequest(ctx context.Context, values HTTPLabels
 		return
 	}
 
-	h.reqInFlight.Add(ctx, 1, attribute.String("method", values.Method), attribute.String("path", values.Path))
+	h.reqInFlight.Add(ctx, 1, metric.WithAttributes(attribute.String("method", values.Method), attribute.String("path", values.Path)))
 }
 
 // RemInFlightRequest Remove 1 from the number of current in-flight requests. All labels should be specified except
@@ -178,5 +181,5 @@ func (h *HTTPRecorder) RemInFlightRequest(ctx context.Context, values HTTPLabels
 		return
 	}
 
-	h.reqInFlight.Add(ctx, -1, attribute.String("method", values.Method), attribute.String("path", values.Path))
+	h.reqInFlight.Add(ctx, -1, metric.WithAttributes(attribute.String("method", values.Method), attribute.String("path", values.Path)))
 }

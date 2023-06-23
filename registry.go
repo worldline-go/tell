@@ -9,7 +9,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel/metric"
-	"go.opentelemetry.io/otel/metric/instrument"
+	"go.opentelemetry.io/otel/metric/noop"
 	metricsdk "go.opentelemetry.io/otel/sdk/metric"
 	tracesdk "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
@@ -40,7 +40,7 @@ type Collector struct {
 func (c *Collector) setUpMetric() {
 	meter := c.MeterProvider.Meter("")
 
-	up, err := meter.Int64ObservableGauge("up", instrument.WithDescription("application up status"))
+	up, err := meter.Int64ObservableGauge("up", metric.WithDescription("application up status"))
 	if err != nil {
 		log.Error().Err(err).Msg("failed to set up gauge metric")
 	}
@@ -91,7 +91,7 @@ func New(ctx context.Context, cfg Config) (*Collector, error) {
 
 		log.Info().Msg("started metric provider for [otel]")
 	} else {
-		c.MeterProvider = metric.NewNoopMeterProvider()
+		c.MeterProvider = noop.NewMeterProvider()
 		log.Info().Msg("started metric provider for [noop]")
 	}
 
@@ -156,7 +156,7 @@ func (c *Collector) Shutdown() (err error) {
 
 	// remove registiration
 	for _, r := range c.registered {
-		r.Unregister()
+		_ = r.Unregister()
 	}
 
 	return nil

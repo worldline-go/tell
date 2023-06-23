@@ -3,9 +3,9 @@ package telemetry
 import (
 	"fmt"
 
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/metric/global"
-	"go.opentelemetry.io/otel/metric/instrument"
+	"go.opentelemetry.io/otel/metric"
 )
 
 var (
@@ -14,9 +14,9 @@ var (
 )
 
 type Meter struct {
-	Error     instrument.Int64Counter
-	Processed instrument.Int64Counter
-	Rules     instrument.Int64Counter
+	Error     metric.Int64Counter
+	Processed metric.Int64Counter
+	Rules     metric.Int64Counter
 }
 
 func AddGlobalAttr(v ...attribute.KeyValue) {
@@ -28,7 +28,7 @@ func ExtendGlobalAttr(v ...attribute.KeyValue) []attribute.KeyValue {
 }
 
 func SetGlobalMeter() error {
-	mp := global.MeterProvider()
+	mp := otel.GetMeterProvider()
 
 	m := &Meter{}
 
@@ -37,19 +37,19 @@ func SetGlobalMeter() error {
 	meter := mp.Meter("")
 
 	//nolint:lll // description
-	m.Processed, err = meter.Int64Counter("transaction_validator_processed_total", instrument.WithDescription("number of successfully validated count"))
+	m.Processed, err = meter.Int64Counter("transaction_validator_processed_total", metric.WithDescription("number of successfully validated count"))
 	if err != nil {
 		return fmt.Errorf("failed to initialize transaction_validator_processed_total; %w", err)
 	}
 
 	//nolint:lll // description
-	m.Error, err = meter.Int64Counter("transaction_validator_error_total", instrument.WithDescription("number of error on validation count"))
+	m.Error, err = meter.Int64Counter("transaction_validator_error_total", metric.WithDescription("number of error on validation count"))
 	if err != nil {
 		return fmt.Errorf("failed to initialize transaction_validator_error_total; %w", err)
 	}
 
 	//nolint:lll // description
-	m.Rules, err = meter.Int64Counter("transaction_validator_rules_total", instrument.WithDescription("number of used rule on validation count"))
+	m.Rules, err = meter.Int64Counter("transaction_validator_rules_total", metric.WithDescription("number of used rule on validation count"))
 	if err != nil {
 		return fmt.Errorf("failed to initialize transaction_validator_error_total; %w", err)
 	}
