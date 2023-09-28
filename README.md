@@ -89,16 +89,16 @@ To add some metric, use collector's MeterProvider to create a metric entry and a
 
 ```go
 // to get meter provider in collector
-collector.MeterProvider 
+collector.MeterProvider
 // to get meter provider in global
-global.MeterProvider()
+otel.GetMeterProvider()
 ```
 
 __Counter:__
 
 ```go
 successCounter, err = collector.MeterProvider.Meter("").
-    Int64Counter("request_success", instrument.WithDescription("number of success count"))
+    Int64Counter("request_success", metric.WithDescription("number of success count"))
 if err != nil {
     log.Panic().Msgf("failed to initialize successCounter; %w", err)
 }
@@ -111,7 +111,7 @@ __Up/Down Counter:__ this is same as counter but it can also decrese.
 
 ```go
 counterUpDown, err = collector.MeterProvider.Meter("").
-    Int64UpDownCounter("request_success", instrument.WithDescription("number of success count"))
+    Int64UpDownCounter("request_success", metric.WithDescription("number of success count"))
 if err != nil {
     log.Panic().Msgf("failed to initialize successCounter; %w", err)
 }
@@ -124,7 +124,7 @@ __Histogram:__
 
 ```go
 valuehistogram, err = collector.MeterProvider.Meter("").
-    Float64Histogram("request_histogram", instrument.WithDescription("value histogram"))
+    Float64Histogram("request_histogram", metric.WithDescription("value histogram"))
 if err != nil {
     log.Panic().Msgf("failed to initialize valuehistogram; %w", err)
 }
@@ -138,7 +138,7 @@ __Gauge:__ this is special and it need to be run with async and we need to regis
 ```go
 meter := collector.MeterProvider.Meter("")
 
-up, err := meter.Int64ObservableGauge("up", instrument.WithDescription("application up status"))
+up, err := meter.Int64ObservableGauge("up", metric.WithDescription("application up status"))
 if err != nil {
     log.Error().Err(err).Msg("failed to set up gauge metric")
 }
@@ -169,7 +169,7 @@ customBucketView := metric.NewView(
         Name: "*request_duration_seconds",
     },
     metric.Stream{
-        Aggregation: aggregation.ExplicitBucketHistogram{
+        Aggregation: metric.AggregationExplicitBucketHistogram{
             Boundaries: []float64{.005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10},
         },
     },

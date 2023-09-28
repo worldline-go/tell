@@ -3,7 +3,6 @@ package metricecho
 import (
 	"github.com/worldline-go/tell/tglobal"
 	"go.opentelemetry.io/otel/sdk/metric"
-	"go.opentelemetry.io/otel/sdk/metric/aggregation"
 )
 
 func GetViews() []metric.View {
@@ -12,7 +11,7 @@ func GetViews() []metric.View {
 			Name: "*request_duration_seconds",
 		},
 		metric.Stream{
-			Aggregation: aggregation.ExplicitBucketHistogram{
+			Aggregation: metric.AggregationExplicitBucketHistogram{
 				Boundaries: []float64{.005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10},
 			},
 		},
