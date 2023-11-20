@@ -14,6 +14,7 @@ import (
 	tracesdk "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
 var ErrSetConnetion = errors.New("grpc connection not set")
@@ -63,7 +64,7 @@ func (c *Collector) AddRegister(r metric.Registration) {
 }
 
 // New generate collectors based on configuration.
-func New(ctx context.Context, cfg Config) (*Collector, error) {
+func New(ctx context.Context, cfg Config, opts ...grpc.DialOption) (*Collector, error) {
 	if cfg.Collector == "" {
 		cfg.Collector = os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
 	}
@@ -76,7 +77,22 @@ func New(ctx context.Context, cfg Config) (*Collector, error) {
 
 	// check grpc need
 	if cfg.Collector != "" {
-		if err := c.ConnectGRPC(ctx, cfg.Collector); err != nil {
+		if cfg.TLS.Enabled {
+			tlsConfig, err := cfg.TLS.Generate()
+			if err != nil {
+				return nil, fmt.Errorf("failed to generate tls config; %w", err)
+			}
+
+			opts = append([]grpc.DialOption{
+				grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)),
+			}, opts...)
+		}
+
+		if cfg.ServerName != "" {
+			opts = append([]grpc.DialOption{grpc.WithAuthority(cfg.ServerName)}, opts...)
+		}
+
+		if err := c.ConnectGRPC(ctx, cfg.Collector, opts...); err != nil {
 			return nil, err
 		}
 

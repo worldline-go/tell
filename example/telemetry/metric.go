@@ -42,13 +42,11 @@ func SetGlobalMeter() error {
 		return fmt.Errorf("failed to initialize transaction_validator_processed_total; %w", err)
 	}
 
-	//nolint:lll // description
 	m.Error, err = meter.Int64Counter("transaction_validator_error_total", metric.WithDescription("number of error on validation count"))
 	if err != nil {
 		return fmt.Errorf("failed to initialize transaction_validator_error_total; %w", err)
 	}
 
-	//nolint:lll // description
 	m.Rules, err = meter.Int64Counter("transaction_validator_rules_total", metric.WithDescription("number of used rule on validation count"))
 	if err != nil {
 		return fmt.Errorf("failed to initialize transaction_validator_error_total; %w", err)

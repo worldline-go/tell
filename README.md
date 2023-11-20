@@ -302,7 +302,7 @@ __TODO:__ export folder
 cd $(mktemp -d)
 curl -fksSL https://worldline-go.github.io/tell/compose.tar.gz | tar --overwrite -zx
 
-docker-compose -p tell --file compose/compose.yml up -d
+docker compose -p tell --file compose/compose.yml up -d
 ```
 
 | Project                    | Port  |
