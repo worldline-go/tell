@@ -69,6 +69,11 @@ func (t TLSConfig) Generate() (*tls.Config, error) {
 type MetricSettings struct {
 	Provider MetricProviderSettings `cfg:"provider"`
 	Disable  bool                   `cfg:"disable"`
+	Default  MetricDefault          `cfg:"default"`
+}
+
+type MetricDefault struct {
+	GoRuntime bool `cfg:"go_runtime"`
 }
 
 type MetricProviderSettings struct {

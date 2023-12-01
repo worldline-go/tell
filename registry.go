@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/contrib/instrumentation/runtime"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/noop"
 	metricsdk "go.opentelemetry.io/otel/sdk/metric"
@@ -106,6 +107,15 @@ func New(ctx context.Context, cfg Config, opts ...grpc.DialOption) (*Collector, 
 		}
 
 		log.Info().Msg("started metric provider for [otel]")
+
+		// add enabled metrics
+		if cfg.Metric.Default.GoRuntime {
+			if err := runtime.Start(); err != nil {
+				return nil, fmt.Errorf("failed to start runtime metrics; %w", err)
+			}
+
+			log.Info().Msg("started runtime metrics")
+		}
 	} else {
 		c.MeterProvider = noop.NewMeterProvider()
 		log.Info().Msg("started metric provider for [noop]")

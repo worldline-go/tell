@@ -5,6 +5,7 @@ go 1.18
 require (
 	github.com/rs/zerolog v1.31.0
 	github.com/twmb/tlscfg v1.2.1
+	go.opentelemetry.io/contrib/instrumentation/runtime v0.46.1
 	go.opentelemetry.io/otel v1.21.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v0.44.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.21.0
