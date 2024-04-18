@@ -2,13 +2,11 @@ module github.com/worldline-go/tell/metric/metricecho
 
 go 1.21
 
-toolchain go1.22.0
-
 replace github.com/worldline-go/tell => ../../
 
 require (
 	github.com/labstack/echo/v4 v4.11.4
-	github.com/worldline-go/tell v0.5.4
+	github.com/worldline-go/tell v0.5.5
 	go.opentelemetry.io/otel v1.25.0
 	go.opentelemetry.io/otel/metric v1.25.0
 	go.opentelemetry.io/otel/sdk/metric v1.25.0

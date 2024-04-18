@@ -2,8 +2,6 @@ module github.com/worldline-go/tell
 
 go 1.21
 
-toolchain go1.22.0
-
 require (
 	github.com/rs/zerolog v1.32.0
 	github.com/twmb/tlscfg v1.2.1
