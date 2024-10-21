@@ -10,10 +10,11 @@ import (
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/contrib/instrumentation/runtime"
 	"go.opentelemetry.io/otel/metric"
-	"go.opentelemetry.io/otel/metric/noop"
+	metricNoop "go.opentelemetry.io/otel/metric/noop"
 	metricsdk "go.opentelemetry.io/otel/sdk/metric"
 	tracesdk "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
+	traceNoop "go.opentelemetry.io/otel/trace/noop"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
@@ -29,14 +30,24 @@ type Collector struct {
 	MeterProvider    metric.MeterProvider
 	MeterProviderSDK *metricsdk.MeterProvider
 	MetricReader     metricsdk.Reader
+	isMetricNoop     bool
 	// traces
 	TracerProvider    trace.TracerProvider
 	TracerProviderSDK *tracesdk.TracerProvider
+	isTraceNoop       bool
 	// ShutdownTimeOut for closing providers, default 2 seconds.
 	ShutdownTimeOut time.Duration
 
 	isUp       int64
 	registered []metric.Registration
+}
+
+func (c *Collector) IsMetricNoop() bool {
+	return c.isMetricNoop
+}
+
+func (c *Collector) IsTraceNoop() bool {
+	return c.isTraceNoop
 }
 
 func (c *Collector) setUpMetric() {
@@ -117,7 +128,8 @@ func New(ctx context.Context, cfg Config, opts ...grpc.DialOption) (*Collector, 
 			log.Info().Msg("started runtime metrics")
 		}
 	} else {
-		c.MeterProvider = noop.NewMeterProvider()
+		c.MeterProvider = metricNoop.NewMeterProvider()
+		c.isMetricNoop = true
 		log.Info().Msg("started metric provider for [noop]")
 	}
 
@@ -131,7 +143,8 @@ func New(ctx context.Context, cfg Config, opts ...grpc.DialOption) (*Collector, 
 
 		log.Info().Msg("started trace provider for [otel]")
 	} else {
-		c.TracerProvider = trace.NewNoopTracerProvider()
+		c.TracerProvider = traceNoop.NewTracerProvider()
+		c.isTraceNoop = true
 		log.Info().Msg("started trace provider for [noop]")
 	}
 

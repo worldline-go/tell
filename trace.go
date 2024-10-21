@@ -6,9 +6,10 @@ import (
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	tracesdk "go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 )
 
 // Get provider and don't forget to shutdown after usage, it will help to flush last messages.
@@ -76,6 +77,15 @@ func (c *Collector) TraceProvider(ctx context.Context, _ TraceProviderSettings) 
 // SetTraceProviderGlobal to globally set provider.
 func (c *Collector) SetTraceProviderGlobal() *Collector {
 	otel.SetTracerProvider(c.TracerProvider)
+
+	if !c.isTraceNoop {
+		otel.SetTextMapPropagator(
+			propagation.NewCompositeTextMapPropagator(
+				propagation.TraceContext{},
+				propagation.Baggage{},
+			),
+		)
+	}
 
 	return c
 }
