@@ -6,7 +6,7 @@ replace github.com/worldline-go/tell => ../../
 
 require (
 	github.com/labstack/echo/v4 v4.12.0
-	github.com/worldline-go/tell v0.5.7
+	github.com/worldline-go/tell v0.5.8
 	go.opentelemetry.io/otel v1.31.0
 	go.opentelemetry.io/otel/metric v1.31.0
 	go.opentelemetry.io/otel/sdk/metric v1.31.0
