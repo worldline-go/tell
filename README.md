@@ -1,11 +1,10 @@
 # tell
 
 [![License](https://img.shields.io/github/license/worldline-go/tell?color=red&style=flat-square)](https://raw.githubusercontent.com/worldline-go/tell/main/LICENSE)
-[![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/worldline-go/tell/test.yml?branch=main&logo=github&style=flat-square&label=ci)](https://github.com/worldline-go/tell/actions)
 [![Go Report Card](https://goreportcard.com/badge/github.com/worldline-go/tell?style=flat-square)](https://goreportcard.com/report/github.com/worldline-go/tell)
 [![Go PKG](https://raw.githubusercontent.com/worldline-go/guide/main/badge/custom/reference.svg)](https://pkg.go.dev/github.com/worldline-go/tell)
 
-This library include metric and trace helper functions to work directly in finops.
+This library include metric and trace helper functions with opentelemetry.
 
 ```sh
 go get github.com/worldline-go/tell
