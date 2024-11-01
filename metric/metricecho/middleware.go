@@ -15,6 +15,10 @@ func HTTPMetrics(opts ...Option) echo.MiddlewareFunc {
 	}
 
 	for _, opt := range opts {
+		if opt == nil {
+			continue
+		}
+
 		opt(&option)
 	}
 
