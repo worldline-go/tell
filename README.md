@@ -274,17 +274,28 @@ collector, err := tell.New(ctx, cfg.Telemetry)
 
 Use to trace provider to create some trace data.
 
-We will add data sampler in future for our finops! Currently manually handle yourself.
+> Context is important to trace data, it will give you the parent-child relationship.  
+> But also if you have cancellation in context maybe you need to use new context based on parent without cancellation.
+>
+> ```go
+> ctx := context.WithoutCancel(c.Request().Context())
+> ```
 
-### Custom Trace
+Use SetStatus before end the span, it will give you more information about the span and good to service graph.
+
+```go
+spanCall.SetStatus(codes.Error, err.Error())
+```
+
+### Custom Internal Trace
 
 Start a trace with using previous context. After the start it will create new context and use that context for next trace.  
 If you not use context or not give previous one tracer, it will start as root and not good for view.
 
 ```go
-// collector.TracerProvider is our trace provider and it is global
-// to get tracer provider // go.opentelemetry.io/otel
-ctxTrace, span := otel.GetTracerProvider().Tracer(c.Path()).Start(c.Request().Context(), "PostCount")
+// set otel.Tracer("") in a value to use again and again
+// set always spankind to internal for internal operations
+ctx, span := otel.Tracer("").Start(c.Request().Context(), "PostCount", trace.WithSpanKind(trace.SpanKindInternal))
 defer span.End()
 
 // add extra values to your trace data
@@ -292,45 +303,47 @@ defer span.End()
 span.SetAttributes(attribute.Key("request.count.set").Int64(countInt))
 ```
 
+### Echo
+
+Use echo's trace, it will automatically make propagation and starting client type as server.
+
+```go
+e.Use(otelecho.Middleware(config.ServiceName))
+```
+
+### Http Request
+
+Create new span to measure http time but don't forget to add span kind as client.
+This is important for generating service-graph!
+
+```go
+ctx, spanCall := tracer.Start(ctx, "GetTransaction", trace.WithSpanKind(trace.SpanKindClient))
+defer spanCall.End()
+
+// add context propagation
+otel.GetTextMapPropagator().Inject(ctx, propagation.HeaderCarrier(request.Header))
+```
+
+### Database
+
+Important to have span kind as client and db.name attribute. It will help to generate service-graph with virtual nodes.
+
+```go
+ctx, span := otel.Tracer("").Start(ctx,
+    "add_product",
+    trace.WithSpanKind(trace.SpanKindClient),
+    trace.WithAttributes(attribute.String("db.name", "postgres")),
+)
+defer span.End()
+```
+
 ## Development
 
-To test in local machine deploy otel-collector, grafana, prometheus and jaeger:
+To test in local machine deploy otel-collector, grafana, prometheus use our telemetry example repo:
 
-__TODO:__ export folder
-
-```sh
-cd $(mktemp -d)
-curl -fksSL https://worldline-go.github.io/tell/compose.tar.gz | tar --overwrite -zx
-
-docker compose -p tell --file compose/compose.yml up -d
-```
-
-| Project                    | Port  |
-|----------------------------|-------|
-| grafana                    | 3000  |
-| jaeger                     | 16686 |
-| prometheus                 | 9090  |
-| collector -> otel-grpc     | 4317  |
-| collector -> otel-metric   | 8888  |
-| collector -> otel-exported | 8889  |
-
-Check the status of tell compose
-
-```sh
-docker-compose -p tell ps
-```
-
-Down the compose
-
-```sh
-docker-compose -p tell down --volumes
-```
+https://github.com/worldline-go/telemetry_example
 
 ## Resources
 
 https://github.com/open-telemetry/opentelemetry-go  
 https://opentelemetry.io/registry/  
-https://pkg.go.dev/go.opentelemetry.io/collector/exporter/prometheusexporter#section-readme  
-https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/examples/demo  
-https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/resource/semantic_conventions/README.md  
-https://docs.docker.com/engine/swarm/services/#create-services-using-templates

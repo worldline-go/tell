@@ -40,6 +40,7 @@ type Collector struct {
 
 	isUp       int64
 	registered []metric.Registration
+	logger     Logger
 }
 
 func (c *Collector) IsMetricNoop() bool {
@@ -55,16 +56,17 @@ func (c *Collector) setUpMetric() {
 
 	up, err := meter.Int64ObservableGauge("up", metric.WithDescription("application up status"))
 	if err != nil {
-		log.Error().Err(err).Msg("failed to set up gauge metric")
+		c.logger.Error("failed to set up gauge metric", "error", err.Error())
 	}
 
-	regUp, err := meter.RegisterCallback(func(ctx context.Context, o metric.Observer) error {
+	regUp, err := meter.RegisterCallback(func(_ context.Context, o metric.Observer) error {
 		o.ObserveInt64(up, c.isUp)
+
 		return nil
 	}, up)
 
 	if err != nil {
-		log.Error().Err(err).Msg("failed to register up gauge metric")
+		c.logger.Error("failed to register up gauge metric", "error", err.Error())
 	}
 
 	c.AddRegister(regUp)
@@ -81,11 +83,18 @@ func New(ctx context.Context, cfg Config, opts ...grpc.DialOption) (*Collector, 
 		cfg.Collector = os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
 	}
 
-	if cfg.Collector != "" {
-		log.Info().Msgf("opentelemetry collector endpoint: [%s]", cfg.Collector)
+	logger := cfg.Logger
+	if logger == nil {
+		logger = adapterKV{Log: log.Logger}
 	}
 
-	c := new(Collector)
+	c := &Collector{
+		logger: logger,
+	}
+
+	if cfg.Collector != "" {
+		c.logger.Info(fmt.Sprintf("opentelemetry collector endpoint: [%s]", cfg.Collector))
+	}
 
 	// check grpc need
 	if cfg.Collector != "" {
@@ -108,7 +117,7 @@ func New(ctx context.Context, cfg Config, opts ...grpc.DialOption) (*Collector, 
 			return nil, err
 		}
 
-		log.Info().Msg("connected to grpc opentelemetry collector")
+		c.logger.Info("connected to grpc opentelemetry collector")
 	}
 
 	// metric
@@ -117,7 +126,7 @@ func New(ctx context.Context, cfg Config, opts ...grpc.DialOption) (*Collector, 
 			return nil, fmt.Errorf("failed initialize metric provider; %w", err)
 		}
 
-		log.Info().Msg("started metric provider for [otel]")
+		c.logger.Info("started metric provider for [otel]")
 
 		// add enabled metrics
 		if cfg.Metric.Default.GoRuntime {
@@ -125,12 +134,12 @@ func New(ctx context.Context, cfg Config, opts ...grpc.DialOption) (*Collector, 
 				return nil, fmt.Errorf("failed to start runtime metrics; %w", err)
 			}
 
-			log.Info().Msg("started runtime metrics")
+			c.logger.Info("started runtime metrics")
 		}
 	} else {
 		c.MeterProvider = metricNoop.NewMeterProvider()
 		c.isMetricNoop = true
-		log.Info().Msg("started metric provider for [noop]")
+		c.logger.Info("started metric provider for [noop]")
 	}
 
 	c.SetMetricProviderGlobal()
@@ -141,11 +150,11 @@ func New(ctx context.Context, cfg Config, opts ...grpc.DialOption) (*Collector, 
 			return nil, fmt.Errorf("failed initialize metric provider; %w", err)
 		}
 
-		log.Info().Msg("started trace provider for [otel]")
+		c.logger.Info("started trace provider for [otel]")
 	} else {
 		c.TracerProvider = traceNoop.NewTracerProvider()
 		c.isTraceNoop = true
-		log.Info().Msg("started trace provider for [noop]")
+		c.logger.Info("started trace provider for [noop]")
 	}
 
 	c.SetTraceProviderGlobal()

@@ -17,6 +17,8 @@ type Config struct {
 
 	Metric MetricSettings `cfg:"metric"`
 	Trace  TraceSettings  `cfg:"trace"`
+
+	Logger Logger `cfg:"-"`
 }
 
 type TLSConfig struct {
