@@ -23,7 +23,7 @@ func Span(c echo.Context) trace.Span {
 //   - Use this after echo tracing middleware.
 func DBMiddleware(dbName, spanName string) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
+		return func(c echo.Context) (err error) {
 			ctx := c.Request().Context()
 			ctx, span := otel.Tracer("").Start(ctx,
 				spanName,
@@ -35,6 +35,14 @@ func DBMiddleware(dbName, spanName string) echo.MiddlewareFunc {
 				// default error status code
 				if c.Response().Status >= 500 {
 					span.SetStatus(codes.Error, http.StatusText(c.Response().Status))
+				}
+			}()
+
+			defer func() {
+				if err != nil {
+					c.Error(err)
+					// don't return the error so that it's not handled again
+					err = nil
 				}
 			}()
 
