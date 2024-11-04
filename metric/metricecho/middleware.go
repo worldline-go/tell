@@ -25,7 +25,7 @@ func HTTPMetrics(opts ...Option) echo.MiddlewareFunc {
 	rec := NewHTTPRecorder(option.cfg, nil)
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) (err error) {
+		return func(c echo.Context) error {
 			values := HTTPLabels{
 				Method: c.Request().Method,
 				Path:   c.Path(),
@@ -37,12 +37,6 @@ func HTTPMetrics(opts ...Option) echo.MiddlewareFunc {
 
 			defer func() {
 				elapsed := time.Since(start)
-
-				if err != nil {
-					c.Error(err)
-					// don't return the error so that it's not handled again
-					err = nil
-				}
 
 				values.Code = c.Response().Status
 

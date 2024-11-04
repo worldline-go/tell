@@ -10,15 +10,6 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-// Span get span from echo context.
-//   - Use this after echo tracing middleware.
-//   - If span not found, return nil.
-func Span(c echo.Context) trace.Span {
-	span, _ := c.Get("span").(trace.Span)
-
-	return span
-}
-
 // DBMiddleware for tracing only database middlewares.
 //   - Use this after echo tracing middleware.
 func DBMiddleware(dbName, spanName string) echo.MiddlewareFunc {
@@ -38,19 +29,11 @@ func DBMiddleware(dbName, spanName string) echo.MiddlewareFunc {
 				}
 			}()
 
-			defer func() {
-				if err != nil {
-					c.Error(err)
-					// don't return the error so that it's not handled again
-					err = nil
-				}
-			}()
-
 			// set context to request
 			c.SetRequest(c.Request().WithContext(ctx))
 
 			// add span to change status code and message
-			c.Set("span", span)
+			c.Set("traceecho-db-span", span)
 
 			return next(c)
 		}
