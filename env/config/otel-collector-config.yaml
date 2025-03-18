@@ -1,0 +1,55 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+
+exporters:
+  prometheus:
+    endpoint: 0.0.0.0:8889
+    # const_labels:
+    #   label1: value1
+    send_timestamps: true
+    metric_expiration: 1m
+
+  otlp:
+    endpoint: tempo:4317
+    tls:
+      insecure: true
+
+  prometheus/servicegraph:
+    endpoint: 0.0.0.0:8890
+
+connectors:
+  servicegraph:
+    # latency_histogram_buckets: [100ms, 250ms, 1s, 5s, 10s]
+    # dimensions:
+    #   - service.name
+    # store:
+    #   ttl: 1s
+    #   max_items: 10
+
+processors:
+  batch:
+
+extensions:
+  health_check:
+  pprof:
+    endpoint: :1888
+  zpages:
+    endpoint: :55679
+
+service:
+  extensions: [pprof, zpages, health_check]
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlp, servicegraph]
+    metrics:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [prometheus]
+    metrics/servicegraph:
+      receivers: [servicegraph]
+      exporters: [prometheus/servicegraph]
