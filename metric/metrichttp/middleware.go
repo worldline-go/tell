@@ -1,4 +1,4 @@
-package metricecho
+package metrichttp
 
 import (
 	"context"

@@ -1,4 +1,4 @@
-package metricecho
+package metrichttp
 
 import (
 	"github.com/worldline-go/tell/tglobal"
