@@ -6,9 +6,9 @@ import (
 	"time"
 )
 
-// HTTPMetrics is an echo middleware to add metrics to rec for each HTTP request.
+// Middleware is an echo middleware to add metrics to rec for each HTTP request.
 // If recorder config is nil, the middleware will use a recorder with default configuration.
-func HTTPMetrics(opts ...Option) func(next http.Handler) http.Handler {
+func Middleware(opts ...Option) func(next http.Handler) http.Handler {
 	option := option{
 		cfg: HTTPCfg,
 	}
