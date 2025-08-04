@@ -2,14 +2,13 @@ package metricecho
 
 import (
 	"context"
+	"net/http"
 	"time"
-
-	"github.com/labstack/echo/v4"
 )
 
 // HTTPMetrics is an echo middleware to add metrics to rec for each HTTP request.
 // If recorder config is nil, the middleware will use a recorder with default configuration.
-func HTTPMetrics(opts ...Option) echo.MiddlewareFunc {
+func HTTPMetrics(opts ...Option) func(next http.Handler) http.Handler {
 	option := option{
 		cfg: HTTPCfg,
 	}
@@ -24,32 +23,47 @@ func HTTPMetrics(opts ...Option) echo.MiddlewareFunc {
 
 	rec := NewHTTPRecorder(option.cfg, nil)
 
-	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			values := HTTPLabels{
-				Method: c.Request().Method,
-				Path:   c.Path(),
+				Method: r.Method,
+				Path:   r.URL.Path,
 			}
-			ctx := context.WithoutCancel(c.Request().Context())
+
+			ctx := context.WithoutCancel(r.Context())
 
 			rec.AddInFlightRequest(ctx, values)
 
 			start := time.Now()
 
+			w2 := &responseWriter{ResponseWriter: w}
+
 			defer func() {
 				elapsed := time.Since(start)
 
-				values.Code = c.Response().Status
+				values.Code = w2.status
 
 				rec.AddRequestToTotal(ctx, values)
 				rec.AddRequestDuration(ctx, elapsed, values)
 				rec.RemInFlightRequest(ctx, values)
 			}()
 
-			return next(c)
-		}
+			next.ServeHTTP(w2, r)
+		})
 	}
 }
+
+type responseWriter struct {
+	http.ResponseWriter
+	status int
+}
+
+func (rw *responseWriter) WriteHeader(statusCode int) {
+	rw.status = statusCode
+	rw.ResponseWriter.WriteHeader(statusCode)
+}
+
+// ///////////////////////////////////////////////////
 
 type option struct {
 	cfg HTTPRecorderConfig

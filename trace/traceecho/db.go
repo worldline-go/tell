@@ -24,7 +24,7 @@ func DBMiddleware(dbName, spanName string) echo.MiddlewareFunc {
 			defer span.End()
 			defer func() {
 				// default error status code
-				if c.Response().Status >= 500 {
+				if c.Response().Status >= http.StatusInternalServerError {
 					span.SetStatus(codes.Error, http.StatusText(c.Response().Status))
 				}
 			}()
