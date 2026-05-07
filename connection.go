@@ -3,9 +3,11 @@ package tell
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/keepalive"
 )
 
 // ConnectGRPC to use connection otel grpc endpoint, usually using to connect otel collector.
@@ -13,6 +15,11 @@ func (c *Collector) ConnectGRPC(_ context.Context, url string, opts ...grpc.Dial
 	// grpc.WithBlock() disabled and it can connect later when collector exist.
 	opts = append([]grpc.DialOption{
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithKeepaliveParams(keepalive.ClientParameters{
+			Time:                60 * time.Second, // send pings every 60 seconds if there is no activity
+			Timeout:             10 * time.Second, // wait 10 second for ping ack before assuming the connection is dead
+			PermitWithoutStream: true,             // send pings even without active streams
+		}),
 	}, opts...)
 
 	conn, err := grpc.NewClient(url, opts...)
