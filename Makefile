@@ -2,16 +2,17 @@
 
 .PHONY: tag
 tag: ## Tags the repo with new version and tag all sub modules same time than push all
-	@read -p "Enter the new version (e.g. v1.0.0): " version; \
-	tags=("$$version"); \
+	@latest=$$(git tag -l 'v[0-9]*' --sort=-v:refname | head -n1 || echo "none"); \
+	printf "Enter the new version (latest: $$latest): "; read version; \
+	tags="$$version"; \
 	git tag "$$version"; \
 	for dir in $(shell find . -mindepth 2 -type f -name 'go.mod' -exec dirname {} \; | sed 's|^\./||'); do \
 		git tag "$$dir/$$version"; \
-		tags+=("$$dir/$$version"); \
+		tags="$$tags $$dir/$$version"; \
 	done; \
 	git tag -l | grep "$$version"; \
-	read -p "Review tags above. Press enter to push to origin: "; \
-	git push origin "$${tags[@]}"
+	printf "Review tags above. Press enter to push to origin: "; read confirm; \
+	git push origin $$tags
 
 .PHONY: env
 env: ## Initializes a dev environment with dev dependencies

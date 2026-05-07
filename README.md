@@ -347,6 +347,8 @@ To test in local machine deploy otel-collector, grafana, prometheus use our tele
 
 https://github.com/worldline-go/telemetry_example
 
+Use `make tag` command to create new tag and push to the repository.
+
 ## Resources
 
 https://github.com/open-telemetry/opentelemetry-go  
