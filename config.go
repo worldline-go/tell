@@ -9,11 +9,18 @@ import (
 
 type Config struct {
 	// Collector to show URL of grpc otel collector.
-	// If emptry disable for metric and trace. It is add a noop metric/trace and your code works without change.
-	Collector string    `cfg:"collector"`
-	TLS       TLSConfig `cfg:"tls"`
+	//   - If empty disable for metric and trace. It is add a noop metric/trace and your code works without change.
+	//   - Default gets from OTEL_EXPORTER_OTLP_ENDPOINT env var.
+	//   - "https://" scheme enables TLS, "http://" scheme is removed.
+	Collector string `cfg:"collector"`
+	// TLS settings, also gets from OTEL_EXPORTER_OTLP_INSECURE=false, OTEL_EXPORTER_OTLP_CERTIFICATE,
+	// OTEL_EXPORTER_OTLP_CLIENT_CERTIFICATE and OTEL_EXPORTER_OTLP_CLIENT_KEY env vars.
+	TLS TLSConfig `cfg:"tls"`
 	// ServerName sets the grpc.WithAuthority with extract host(server_name) for connection.
 	ServerName string `cfg:"server_name"`
+	// Compression for grpc calls, "gzip" or "none".
+	//   - Default gets from OTEL_EXPORTER_OTLP_COMPRESSION env var.
+	Compression string `cfg:"compression"`
 
 	Metric MetricSettings `cfg:"metric"`
 	Trace  TraceSettings  `cfg:"trace"`
@@ -70,8 +77,10 @@ func (t TLSConfig) Generate() (*tls.Config, error) {
 
 type MetricSettings struct {
 	Provider MetricProviderSettings `cfg:"provider"`
-	Disable  bool                   `cfg:"disable"`
-	Default  MetricDefault          `cfg:"default"`
+	// Disable to use noop metric provider.
+	//   - Also enabled with OTEL_SDK_DISABLED=true or OTEL_METRICS_EXPORTER=none env vars.
+	Disable bool          `cfg:"disable"`
+	Default MetricDefault `cfg:"default"`
 }
 
 type MetricDefault struct {
@@ -79,12 +88,21 @@ type MetricDefault struct {
 }
 
 type MetricProviderSettings struct {
+	// Interval between metric exports.
+	//   - Default gets from OTEL_METRIC_EXPORT_INTERVAL env var (milliseconds), otherwise 5s.
 	Interval time.Duration `cfg:"interval"`
 }
 
 type TraceSettings struct {
 	Provider TraceProviderSettings `cfg:"provider"`
-	Disable  bool                  `cfg:"disable"`
+	// Disable to use noop trace provider.
+	//   - Also enabled with OTEL_SDK_DISABLED=true or OTEL_TRACES_EXPORTER=none env vars.
+	Disable bool `cfg:"disable"`
 }
 
+// TraceProviderSettings for trace provider.
+//
+// Sampler gets from OTEL_TRACES_SAMPLER and OTEL_TRACES_SAMPLER_ARG env vars,
+// default is parentbased_always_on.
+// Batch span processor gets from OTEL_BSP_* env vars.
 type TraceProviderSettings struct{}

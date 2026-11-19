@@ -15,15 +15,36 @@ To close some metrics and trace
 ```sh
 # if empty, metrics and trace providers and create noop provider to continue to work same as code perspective.
 # default is empty
+# https:// scheme enables TLS, http:// scheme is removed
 OTEL_EXPORTER_OTLP_ENDPOINT=otel-collector:4317
 # Also TELEMETRY_COLLECTOR can usable for same thing
 # TELEMETRY_COLLECTOR=otel-collector:4317
-# inteval duration so send new metrics to otel collector (using time.Parseduration)
-# default 5s
-TELEMETRY_METRIC_PROVIDER_INTERVAL=5s
+# interval in milliseconds to send new metrics to otel collector, default 5000 (5s)
+OTEL_METRIC_EXPORT_INTERVAL=5000
+# config's metric.provider.interval has priority (using time.ParseDuration)
+# TELEMETRY_METRIC_PROVIDER_INTERVAL=5s
 ```
 
 > `TELEMETRY_` prefix comes with igconfig!
+
+Configuration values have priority, empty values are filled from these environment values:
+
+| Env | Description |
+|---|---|
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | Collector grpc endpoint (`collector`) |
+| `OTEL_EXPORTER_OTLP_INSECURE` | `false` enables TLS (`tls.enabled`) |
+| `OTEL_EXPORTER_OTLP_CERTIFICATE` | CA file (`tls.ca_file`) |
+| `OTEL_EXPORTER_OTLP_CLIENT_CERTIFICATE` / `OTEL_EXPORTER_OTLP_CLIENT_KEY` | Client cert and key (`tls.cert_file`, `tls.key_file`) |
+| `OTEL_EXPORTER_OTLP_COMPRESSION` | `gzip` or `none` (`compression`) |
+| `OTEL_EXPORTER_OTLP_HEADERS` | Headers for every export, e.g. `authorization=Bearer xyz` |
+| `OTEL_EXPORTER_OTLP_TIMEOUT` | Export timeout in milliseconds |
+| `OTEL_METRIC_EXPORT_INTERVAL` / `OTEL_METRIC_EXPORT_TIMEOUT` | Metric export interval and timeout in milliseconds |
+| `OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE` | `cumulative`, `delta` or `lowmemory` |
+| `OTEL_TRACES_SAMPLER` / `OTEL_TRACES_SAMPLER_ARG` | Trace sampler, default `parentbased_always_on` |
+| `OTEL_BSP_*` | Batch span processor settings |
+| `OTEL_SDK_DISABLED` | `true` uses noop metric and trace providers |
+| `OTEL_METRICS_EXPORTER` / `OTEL_TRACES_EXPORTER` | `none` uses noop provider for that signal |
+| `OTEL_SERVICE_NAME` / `OTEL_RESOURCE_ATTRIBUTES` | Resource attributes, check below |
 
 ## Otel Environment Values
 

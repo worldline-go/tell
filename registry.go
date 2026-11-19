@@ -4,7 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
+	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -17,9 +18,18 @@ import (
 	traceNoop "go.opentelemetry.io/otel/trace/noop"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/encoding/gzip"
 )
 
-var ErrSetConnetion = errors.New("grpc connection not set")
+var (
+	// ErrSetConnection is returned when provider initialization requires a gRPC connection.
+	ErrSetConnection = errors.New("grpc connection not set")
+	// ErrSetConnetion is kept for backward compatibility.
+	//
+	// Deprecated: use ErrSetConnection.
+	ErrSetConnetion = ErrSetConnection
+)
 
 const defaultShutdownTimeOut = 2 * time.Second
 
@@ -38,7 +48,7 @@ type Collector struct {
 	// ShutdownTimeOut for closing providers, default 2 seconds.
 	ShutdownTimeOut time.Duration
 
-	isUp       int64
+	isUp       atomic.Int64
 	registered []metric.Registration
 	logger     Logger
 }
@@ -57,10 +67,12 @@ func (c *Collector) setUpMetric() {
 	up, err := meter.Int64ObservableGauge("up", metric.WithDescription("application up status"))
 	if err != nil {
 		c.logger.Error("failed to set up gauge metric", "error", err.Error())
+
+		return
 	}
 
 	regUp, err := meter.RegisterCallback(func(_ context.Context, o metric.Observer) error {
-		o.ObserveInt64(up, c.isUp)
+		o.ObserveInt64(up, c.isUp.Load())
 
 		return nil
 	}, up)
@@ -74,14 +86,18 @@ func (c *Collector) setUpMetric() {
 
 // AddRegister adding metric.Registration for unregister in shutdown.
 func (c *Collector) AddRegister(r metric.Registration) {
+	if r == nil {
+		return
+	}
+
 	c.registered = append(c.registered, r)
 }
 
 // New generate collectors based on configuration.
+//
+// Empty configuration values are filled with OTEL_* environment values, check the Config fields.
 func New(ctx context.Context, cfg Config, opts ...grpc.DialOption) (*Collector, error) {
-	if cfg.Collector == "" {
-		cfg.Collector = os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
-	}
+	cfg.applyEnv()
 
 	logger := cfg.Logger
 	if logger == nil {
@@ -92,28 +108,20 @@ func New(ctx context.Context, cfg Config, opts ...grpc.DialOption) (*Collector, 
 		logger: logger,
 	}
 
-	if cfg.Collector != "" {
-		c.logger.Info(fmt.Sprintf("opentelemetry collector endpoint: [%s]", cfg.Collector))
-	}
+	useMetric := cfg.Collector != "" && !cfg.Metric.Disable
+	useTrace := cfg.Collector != "" && !cfg.Trace.Disable
 
 	// check grpc need
-	if cfg.Collector != "" {
-		if cfg.TLS.Enabled {
-			tlsConfig, err := cfg.TLS.Generate()
-			if err != nil {
-				return nil, fmt.Errorf("failed to generate tls config; %w", err)
-			}
+	if useMetric || useTrace {
+		c.logger.Info(fmt.Sprintf("opentelemetry collector endpoint: [%s]", cfg.Collector))
 
-			opts = append([]grpc.DialOption{
-				grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)),
-			}, opts...)
+		dialOpts, err := cfg.dialOptions()
+		if err != nil {
+			return nil, err
 		}
 
-		if cfg.ServerName != "" {
-			opts = append([]grpc.DialOption{grpc.WithAuthority(cfg.ServerName)}, opts...)
-		}
-
-		if err := c.ConnectGRPC(ctx, cfg.Collector, opts...); err != nil {
+		// user options have priority
+		if err := c.ConnectGRPC(ctx, cfg.Collector, append(dialOpts, opts...)...); err != nil {
 			return nil, err
 		}
 
@@ -121,17 +129,17 @@ func New(ctx context.Context, cfg Config, opts ...grpc.DialOption) (*Collector, 
 	}
 
 	// metric
-	if cfg.Collector != "" && !cfg.Metric.Disable {
+	if useMetric {
 		if err := c.MetricProvider(ctx, cfg.Metric.Provider); err != nil {
-			return nil, fmt.Errorf("failed initialize metric provider; %w", err)
+			return nil, errors.Join(fmt.Errorf("failed initialize metric provider; %w", err), c.Shutdown())
 		}
 
 		c.logger.Info("started metric provider for [otel]")
 
 		// add enabled metrics
 		if cfg.Metric.Default.GoRuntime {
-			if err := runtime.Start(); err != nil {
-				return nil, fmt.Errorf("failed to start runtime metrics; %w", err)
+			if err := runtime.Start(runtime.WithMeterProvider(c.MeterProvider)); err != nil {
+				return nil, errors.Join(fmt.Errorf("failed to start runtime metrics; %w", err), c.Shutdown())
 			}
 
 			c.logger.Info("started runtime metrics")
@@ -145,9 +153,9 @@ func New(ctx context.Context, cfg Config, opts ...grpc.DialOption) (*Collector, 
 	c.SetMetricProviderGlobal()
 
 	// trace
-	if cfg.Collector != "" && !cfg.Trace.Disable {
+	if useTrace {
 		if err := c.TraceProvider(ctx, cfg.Trace.Provider); err != nil {
-			return nil, fmt.Errorf("failed initialize metric provider; %w", err)
+			return nil, errors.Join(fmt.Errorf("failed initialize trace provider; %w", err), c.Shutdown())
 		}
 
 		c.logger.Info("started trace provider for [otel]")
@@ -160,16 +168,46 @@ func New(ctx context.Context, cfg Config, opts ...grpc.DialOption) (*Collector, 
 	c.SetTraceProviderGlobal()
 
 	// everything is works fine, send up information
-	c.isUp = 1
+	c.isUp.Store(1)
 	c.setUpMetric()
 
 	return c, nil
 }
 
+// dialOptions returns grpc options for TLS, server name and compression.
+func (cfg Config) dialOptions() ([]grpc.DialOption, error) {
+	var opts []grpc.DialOption
+
+	if cfg.TLS.Enabled {
+		tlsConfig, err := cfg.TLS.Generate()
+		if err != nil {
+			return nil, fmt.Errorf("failed to generate tls config; %w", err)
+		}
+
+		opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
+	} else {
+		opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	}
+
+	if cfg.ServerName != "" {
+		opts = append(opts, grpc.WithAuthority(cfg.ServerName))
+	}
+
+	switch strings.ToLower(strings.TrimSpace(cfg.Compression)) {
+	case "", "none":
+	case gzip.Name:
+		opts = append(opts, grpc.WithDefaultCallOptions(grpc.UseCompressor(gzip.Name)))
+	default:
+		return nil, fmt.Errorf("unsupported compression [%s], use gzip or none", cfg.Compression)
+	}
+
+	return opts, nil
+}
+
 // Shutdown to flush and shutdown providers and close grpc connection.
 // Providers will not export metrics after shutdown.
 func (c *Collector) Shutdown() (err error) {
-	c.isUp = 0
+	c.isUp.Store(0)
 
 	// set the default context timeout
 	if c.ShutdownTimeOut == 0 {
@@ -177,11 +215,11 @@ func (c *Collector) Shutdown() (err error) {
 	}
 
 	defer func() {
-		if c.Conn != nil {
-			if errClose := c.Conn.Close(); errClose != nil {
-				err = fmt.Errorf("failed to close connection; %v; %w", errClose, err)
-			}
+		if errClose := c.CloseGRPC(); errClose != nil {
+			err = errors.Join(err, errClose)
 		}
+
+		c.Conn = nil
 	}()
 
 	ctxMetric, cancelCtxMetric := context.WithTimeout(context.Background(), c.ShutdownTimeOut)
@@ -189,8 +227,10 @@ func (c *Collector) Shutdown() (err error) {
 
 	if c.MeterProviderSDK != nil {
 		if errShutdown := c.MeterProviderSDK.Shutdown(ctxMetric); errShutdown != nil {
-			err = fmt.Errorf("failed to shutdown meter provider; %w; %v", errShutdown, err)
+			err = errors.Join(err, fmt.Errorf("failed to shutdown meter provider; %w", errShutdown))
 		}
+
+		c.MeterProviderSDK = nil
 	}
 
 	ctxTrace, cancelCtxTrace := context.WithTimeout(context.Background(), c.ShutdownTimeOut)
@@ -198,14 +238,20 @@ func (c *Collector) Shutdown() (err error) {
 
 	if c.TracerProviderSDK != nil {
 		if errShutdown := c.TracerProviderSDK.Shutdown(ctxTrace); errShutdown != nil {
-			err = fmt.Errorf("failed to shutdown trace provider; %w; %v", errShutdown, err)
+			err = errors.Join(err, fmt.Errorf("failed to shutdown trace provider; %w", errShutdown))
+		}
+
+		c.TracerProviderSDK = nil
+	}
+
+	// remove registration
+	for _, r := range c.registered {
+		if errUnregister := r.Unregister(); errUnregister != nil {
+			err = errors.Join(err, fmt.Errorf("failed to unregister metric callback; %w", errUnregister))
 		}
 	}
 
-	// remove registiration
-	for _, r := range c.registered {
-		_ = r.Unregister()
-	}
+	c.registered = nil
 
-	return nil
+	return err
 }
