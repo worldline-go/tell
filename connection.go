@@ -12,7 +12,7 @@ import (
 
 // ConnectGRPC to use connection otel grpc endpoint, usually using to connect otel collector.
 func (c *Collector) ConnectGRPC(_ context.Context, url string, opts ...grpc.DialOption) error {
-	// grpc.WithBlock() disabled and it can connect later when collector exist.
+	// NewClient does not connect immediately, it connects on first export and reconnects when collector is up.
 	opts = append([]grpc.DialOption{
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithKeepaliveParams(keepalive.ClientParameters{

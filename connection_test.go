@@ -26,7 +26,7 @@ func TestConnection(t *testing.T) {
 		"Content-Type": []string{"application/grpc"},
 	})
 
-	if err := c.ConnectGRPC(ctx, "localhost:18080", grpc.WithBlock(), grpc.WithDefaultCallOptions(header)); err != nil {
+	if err := c.ConnectGRPC(ctx, "localhost:18080", grpc.WithDefaultCallOptions(header)); err != nil {
 		t.Fatal("failed to connect", err)
 	}
 }
@@ -49,11 +49,6 @@ func TestData(t *testing.T) {
 			},
 			ServerName: "otel-collector",
 		},
-		grpc.WithBlock(),
-		// grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{
-		// 	InsecureSkipVerify: true,
-		// })),
-		// grpc.WithAuthority("otel-collector"),
 	)
 	if err != nil {
 		t.Fatal("failed to init telemetry", err)

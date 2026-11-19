@@ -58,6 +58,24 @@ func TestApplyEnv(t *testing.T) {
 			},
 		},
 		{
+			name: "protocol from env",
+			env:  map[string]string{envProtocol: "http/protobuf"},
+			want: func(t *testing.T, cfg Config) {
+				if cfg.Protocol != "http/protobuf" {
+					t.Errorf("protocol = %q", cfg.Protocol)
+				}
+			},
+		},
+		{
+			name: "endpoint with path",
+			cfg:  Config{Collector: "https://otel.example.com/otlp/"},
+			want: func(t *testing.T, cfg Config) {
+				if cfg.Collector != "otel.example.com" || cfg.basePath != "/otlp" {
+					t.Errorf("collector = %q, basePath = %q", cfg.Collector, cfg.basePath)
+				}
+			},
+		},
+		{
 			name: "sdk disabled",
 			env:  map[string]string{envSDKDisabled: "true"},
 			want: func(t *testing.T, cfg Config) {
@@ -101,7 +119,7 @@ func TestApplyEnv(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			for _, k := range []string{
 				envEndpoint, envInsecure, envCertificate, envClientCertificate, envClientKey,
-				envCompression, envSDKDisabled, envMetricsExporter, envTracesExporter,
+				envCompression, envSDKDisabled, envMetricsExporter, envTracesExporter, envProtocol,
 			} {
 				t.Setenv(k, "")
 			}

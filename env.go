@@ -14,6 +14,7 @@ const (
 	envClientCertificate = "OTEL_EXPORTER_OTLP_CLIENT_CERTIFICATE"
 	envClientKey         = "OTEL_EXPORTER_OTLP_CLIENT_KEY"
 	envCompression       = "OTEL_EXPORTER_OTLP_COMPRESSION"
+	envProtocol          = "OTEL_EXPORTER_OTLP_PROTOCOL"
 	envSDKDisabled       = "OTEL_SDK_DISABLED"
 	envMetricsExporter   = "OTEL_METRICS_EXPORTER"
 	envTracesExporter    = "OTEL_TRACES_EXPORTER"
@@ -56,12 +57,17 @@ func (cfg *Config) applyEnv() {
 		cfg.Compression = strings.ToLower(strings.TrimSpace(os.Getenv(envCompression)))
 	}
 
+	if cfg.Protocol == "" {
+		cfg.Protocol = os.Getenv(envProtocol)
+	}
+
 	cfg.Collector = cfg.parseEndpoint(cfg.Collector)
 }
 
-// parseEndpoint returns the grpc target of the endpoint.
+// parseEndpoint returns the host of the endpoint.
 //   - "https://host:4317" enables TLS and returns "host:4317".
 //   - "http://host:4317" returns "host:4317" without TLS.
+//   - Path of the URL is kept in basePath for HTTP protocol, e.g. "https://host/otlp" sends to "/otlp/v1/traces".
 //   - Other values are returned as they are, e.g. "host:4317" or "dns:///host:4317".
 func (cfg *Config) parseEndpoint(endpoint string) string {
 	endpoint = strings.TrimSpace(endpoint)
@@ -74,13 +80,14 @@ func (cfg *Config) parseEndpoint(endpoint string) string {
 	switch strings.ToLower(u.Scheme) {
 	case "https":
 		cfg.TLS.Enabled = true
-
-		return u.Host
 	case "http":
-		return u.Host
+	default:
+		return endpoint
 	}
 
-	return endpoint
+	cfg.basePath = strings.TrimRight(u.Path, "/")
+
+	return u.Host
 }
 
 func envBool(key string) (value, ok bool) {

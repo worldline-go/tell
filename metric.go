@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	metricsdk "go.opentelemetry.io/otel/sdk/metric"
 
 	"github.com/worldline-go/tell/tglobal"
@@ -21,12 +20,8 @@ const envMetricExportInterval = "OTEL_METRIC_EXPORT_INTERVAL"
 //
 // MetricProvider set the provider to collector and return it.
 func (c *Collector) MetricProvider(ctx context.Context, cfg MetricProviderSettings) error {
-	if c.Conn == nil {
-		return ErrSetConnection
-	}
-
 	// Set up a metric exporter
-	metricExporter, err := otlpmetricgrpc.New(ctx, otlpmetricgrpc.WithGRPCConn(c.Conn))
+	metricExporter, err := c.metricExporter(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to create metric exporter: %w", err)
 	}

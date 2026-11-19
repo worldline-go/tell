@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/propagation"
 	tracesdk "go.opentelemetry.io/otel/sdk/trace"
 )
@@ -19,12 +18,8 @@ import (
 // otel.SetTextMapPropagator(propagation.TraceContext{})
 
 func (c *Collector) TraceProvider(ctx context.Context, _ TraceProviderSettings) error {
-	if c.Conn == nil {
-		return ErrSetConnection
-	}
-
 	// Set up a trace exporter
-	traceExporter, err := otlptracegrpc.New(ctx, otlptracegrpc.WithGRPCConn(c.Conn))
+	traceExporter, err := c.traceExporter(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to create trace exporter: %w", err)
 	}

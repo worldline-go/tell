@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 	"sync/atomic"
 	"time"
 
@@ -47,6 +46,8 @@ type Collector struct {
 	isTraceNoop       bool
 	// ShutdownTimeOut for closing providers, default 2 seconds.
 	ShutdownTimeOut time.Duration
+
+	exporter exporterConfig
 
 	isUp       atomic.Int64
 	registered []metric.Registration
@@ -95,6 +96,8 @@ func (c *Collector) AddRegister(r metric.Registration) {
 
 // New generate collectors based on configuration.
 //
+// opts are only used with grpc protocol.
+//
 // Empty configuration values are filled with OTEL_* environment values, check the Config fields.
 func New(ctx context.Context, cfg Config, opts ...grpc.DialOption) (*Collector, error) {
 	cfg.applyEnv()
@@ -111,21 +114,36 @@ func New(ctx context.Context, cfg Config, opts ...grpc.DialOption) (*Collector, 
 	useMetric := cfg.Collector != "" && !cfg.Metric.Disable
 	useTrace := cfg.Collector != "" && !cfg.Trace.Disable
 
-	// check grpc need
 	if useMetric || useTrace {
-		c.logger.Info(fmt.Sprintf("opentelemetry collector endpoint: [%s]", cfg.Collector))
-
-		dialOpts, err := cfg.dialOptions()
+		protocol, err := normalizeProtocol(cfg.Protocol)
 		if err != nil {
 			return nil, err
 		}
 
-		// user options have priority
-		if err := c.ConnectGRPC(ctx, cfg.Collector, append(dialOpts, opts...)...); err != nil {
-			return nil, err
-		}
+		c.logger.Info(fmt.Sprintf("opentelemetry collector endpoint: [%s] protocol: [%s]", cfg.Collector, protocol))
 
-		c.logger.Info("connected to grpc opentelemetry collector")
+		switch protocol {
+		case ProtocolHTTPProtobuf:
+			if c.exporter, err = cfg.httpExporterConfig(); err != nil {
+				return nil, err
+			}
+
+			if len(opts) > 0 || cfg.ServerName != "" {
+				c.logger.Warn("grpc dial options and server_name are ignored with http protocol")
+			}
+		default:
+			dialOpts, err := cfg.dialOptions()
+			if err != nil {
+				return nil, err
+			}
+
+			// user options have priority
+			if err := c.ConnectGRPC(ctx, cfg.Collector, append(dialOpts, opts...)...); err != nil {
+				return nil, err
+			}
+
+			c.logger.Info("connected to grpc opentelemetry collector")
+		}
 	}
 
 	// metric
@@ -193,12 +211,13 @@ func (cfg Config) dialOptions() ([]grpc.DialOption, error) {
 		opts = append(opts, grpc.WithAuthority(cfg.ServerName))
 	}
 
-	switch strings.ToLower(strings.TrimSpace(cfg.Compression)) {
-	case "", "none":
-	case gzip.Name:
+	compression, err := useGzip(cfg.Compression)
+	if err != nil {
+		return nil, err
+	}
+
+	if compression {
 		opts = append(opts, grpc.WithDefaultCallOptions(grpc.UseCompressor(gzip.Name)))
-	default:
-		return nil, fmt.Errorf("unsupported compression [%s], use gzip or none", cfg.Compression)
 	}
 
 	return opts, nil

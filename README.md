@@ -31,7 +31,8 @@ Configuration values have priority, empty values are filled from these environme
 
 | Env | Description |
 |---|---|
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | Collector grpc endpoint (`collector`) |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | Collector endpoint (`collector`) |
+| `OTEL_EXPORTER_OTLP_PROTOCOL` | `grpc` (default) or `http/protobuf` (`protocol`) |
 | `OTEL_EXPORTER_OTLP_INSECURE` | `false` enables TLS (`tls.enabled`) |
 | `OTEL_EXPORTER_OTLP_CERTIFICATE` | CA file (`tls.ca_file`) |
 | `OTEL_EXPORTER_OTLP_CLIENT_CERTIFICATE` / `OTEL_EXPORTER_OTLP_CLIENT_KEY` | Client cert and key (`tls.cert_file`, `tls.key_file`) |
@@ -45,6 +46,18 @@ Configuration values have priority, empty values are filled from these environme
 | `OTEL_SDK_DISABLED` | `true` uses noop metric and trace providers |
 | `OTEL_METRICS_EXPORTER` / `OTEL_TRACES_EXPORTER` | `none` uses noop provider for that signal |
 | `OTEL_SERVICE_NAME` / `OTEL_RESOURCE_ATTRIBUTES` | Resource attributes, check below |
+
+### HTTP Protocol
+
+Default protocol is gRPC (port `4317`). Use `http/protobuf` when there is a proxy or load balancer which is not supporting gRPC (port `4318`).
+
+```sh
+OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
+OTEL_EXPORTER_OTLP_ENDPOINT=https://otel-collector:4318
+```
+
+Metrics are sent to `<endpoint>/v1/metrics` and traces to `<endpoint>/v1/traces`, a path in the endpoint is kept as prefix (`https://example.com/otlp` → `/otlp/v1/traces`).
+`server_name` and `grpc.DialOption` values are only used with gRPC.
 
 ## Otel Environment Values
 

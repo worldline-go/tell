@@ -16,16 +16,24 @@ type Config struct {
 	// TLS settings, also gets from OTEL_EXPORTER_OTLP_INSECURE=false, OTEL_EXPORTER_OTLP_CERTIFICATE,
 	// OTEL_EXPORTER_OTLP_CLIENT_CERTIFICATE and OTEL_EXPORTER_OTLP_CLIENT_KEY env vars.
 	TLS TLSConfig `cfg:"tls"`
-	// ServerName sets the grpc.WithAuthority with extract host(server_name) for connection.
+	// ServerName sets the grpc.WithAuthority with extract host(server_name) for connection, only for grpc protocol.
 	ServerName string `cfg:"server_name"`
-	// Compression for grpc calls, "gzip" or "none".
+	// Compression for exports, "gzip" or "none".
 	//   - Default gets from OTEL_EXPORTER_OTLP_COMPRESSION env var.
 	Compression string `cfg:"compression"`
+	// Protocol to connect collector, "grpc" or "http/protobuf".
+	//   - Default gets from OTEL_EXPORTER_OTLP_PROTOCOL env var, otherwise "grpc".
+	//   - "http/protobuf" sends to <collector>/v1/metrics and <collector>/v1/traces, default port of collector is 4318.
+	//   - ServerName and grpc.DialOption values are only used with "grpc".
+	Protocol string `cfg:"protocol"`
 
 	Metric MetricSettings `cfg:"metric"`
 	Trace  TraceSettings  `cfg:"trace"`
 
 	Logger Logger `cfg:"-"`
+
+	// basePath is the path of the collector URL for HTTP protocol.
+	basePath string
 }
 
 type TLSConfig struct {
