@@ -214,12 +214,18 @@ customBucketView := metric.NewView(
 )
 ```
 
-If you have views, you need to add before to initialize metric provider.
-
-Add to the tglobal
+For only histogram buckets, a view is not needed, give them when creating the instrument:
 
 ```go
-tglobal.MetricViews.Add("echo", GetViews()) // accepts []view.View
+meter.Float64Histogram("request_duration_seconds",
+    metric.WithExplicitBucketBoundaries(.005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10),
+)
+```
+
+If you have views, add them to the config before initializing the metric provider.
+
+```go
+cfg.Metric.Provider.Views = []metric.View{customBucketView}
 ```
 
 ### Example Usage

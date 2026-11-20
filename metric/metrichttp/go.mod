@@ -2,10 +2,7 @@ module github.com/worldline-go/tell/metric/metrichttp
 
 go 1.26.0
 
-replace github.com/worldline-go/tell => ../../
-
 require (
-	github.com/worldline-go/tell v0.7.1
 	go.opentelemetry.io/otel v1.47.0
 	go.opentelemetry.io/otel/metric v1.47.0
 	go.opentelemetry.io/otel/sdk/metric v1.47.0

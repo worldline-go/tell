@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"sync/atomic"
 	"time"
 
-	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/contrib/instrumentation/runtime"
 	"go.opentelemetry.io/otel/metric"
 	metricNoop "go.opentelemetry.io/otel/metric/noop"
@@ -51,7 +51,7 @@ type Collector struct {
 
 	isUp       atomic.Int64
 	registered []metric.Registration
-	logger     Logger
+	logger     *slog.Logger
 }
 
 func (c *Collector) IsMetricNoop() bool {
@@ -67,7 +67,7 @@ func (c *Collector) setUpMetric() {
 
 	up, err := meter.Int64ObservableGauge("up", metric.WithDescription("application up status"))
 	if err != nil {
-		c.logger.Error("failed to set up gauge metric", "error", err.Error())
+		c.logger.Error("failed to set up gauge metric", "error", err)
 
 		return
 	}
@@ -79,7 +79,7 @@ func (c *Collector) setUpMetric() {
 	}, up)
 
 	if err != nil {
-		c.logger.Error("failed to register up gauge metric", "error", err.Error())
+		c.logger.Error("failed to register up gauge metric", "error", err)
 	}
 
 	c.AddRegister(regUp)
@@ -104,7 +104,7 @@ func New(ctx context.Context, cfg Config, opts ...grpc.DialOption) (*Collector, 
 
 	logger := cfg.Logger
 	if logger == nil {
-		logger = adapterKV{Log: log.Logger}
+		logger = slog.Default()
 	}
 
 	c := &Collector{
@@ -120,7 +120,7 @@ func New(ctx context.Context, cfg Config, opts ...grpc.DialOption) (*Collector, 
 			return nil, err
 		}
 
-		c.logger.Info(fmt.Sprintf("opentelemetry collector endpoint: [%s] protocol: [%s]", cfg.Collector, protocol))
+		c.logger.Info("opentelemetry collector", "endpoint", cfg.Collector, "protocol", protocol)
 
 		switch protocol {
 		case ProtocolHTTPProtobuf:

@@ -2,9 +2,11 @@ package tell
 
 import (
 	"crypto/tls"
+	"log/slog"
 	"time"
 
 	"github.com/twmb/tlscfg"
+	metricsdk "go.opentelemetry.io/otel/sdk/metric"
 )
 
 type Config struct {
@@ -30,7 +32,8 @@ type Config struct {
 	Metric MetricSettings `cfg:"metric"`
 	Trace  TraceSettings  `cfg:"trace"`
 
-	Logger Logger `cfg:"-"`
+	// Logger for tell messages, default is slog.Default().
+	Logger *slog.Logger `cfg:"-"`
 
 	// basePath is the path of the collector URL for HTTP protocol.
 	basePath string
@@ -99,6 +102,8 @@ type MetricProviderSettings struct {
 	// Interval between metric exports.
 	//   - Default gets from OTEL_METRIC_EXPORT_INTERVAL env var (milliseconds), otherwise 5s.
 	Interval time.Duration `cfg:"interval"`
+	// Views to customize metric streams, set it in code before initializing the provider.
+	Views []metricsdk.View `cfg:"-"`
 }
 
 type TraceSettings struct {

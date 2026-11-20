@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 )
 
 // HTTPMetrics is an echo middleware to add metrics to rec for each HTTP request.
@@ -25,7 +25,7 @@ func HTTPMetrics(opts ...Option) echo.MiddlewareFunc {
 	rec := NewHTTPRecorder(option.cfg, nil)
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
+		return func(c *echo.Context) (err error) {
 			values := HTTPLabels{
 				Method: c.Request().Method,
 				Path:   c.Path(),
@@ -39,7 +39,7 @@ func HTTPMetrics(opts ...Option) echo.MiddlewareFunc {
 			defer func() {
 				elapsed := time.Since(start)
 
-				values.Code = c.Response().Status
+				_, values.Code = echo.ResolveResponseStatus(c.Response(), err)
 
 				rec.AddRequestToTotal(ctx, values)
 				rec.AddRequestDuration(ctx, elapsed, values)

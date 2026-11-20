@@ -111,6 +111,7 @@ func (h *HTTPRecorder) register() error {
 		reqDuration, err := meter.Float64Histogram(
 			h.namespacedValue("request_duration_seconds"),
 			metric.WithDescription("The total duration of a request in seconds"),
+			metric.WithExplicitBucketBoundaries(DurationBuckets...),
 		)
 		if err != nil {
 			return fmt.Errorf("meter %s cannot set; %w", "request_duration_seconds", err)

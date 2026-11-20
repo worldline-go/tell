@@ -3,7 +3,7 @@ package traceecho
 import (
 	"net/http"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
@@ -14,7 +14,7 @@ import (
 //   - Use this after echo tracing middleware.
 func DBMiddleware(dbName, spanName string) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) (err error) {
+		return func(c *echo.Context) (err error) {
 			ctx := c.Request().Context()
 			ctx, span := otel.Tracer("").Start(ctx,
 				spanName,
@@ -24,8 +24,8 @@ func DBMiddleware(dbName, spanName string) echo.MiddlewareFunc {
 			defer span.End()
 			defer func() {
 				// default error status code
-				if c.Response().Status >= http.StatusInternalServerError {
-					span.SetStatus(codes.Error, http.StatusText(c.Response().Status))
+				if _, status := echo.ResolveResponseStatus(c.Response(), err); status >= http.StatusInternalServerError {
+					span.SetStatus(codes.Error, http.StatusText(status))
 				}
 			}()
 
